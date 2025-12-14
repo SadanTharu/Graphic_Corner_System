@@ -53,3 +53,14 @@ exports.getPublicServices = async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 };
+
+// Public: get services by category
+exports.getServicesByCategory = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const services = await Service.find({ category: categoryId });
+    res.json(services);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};

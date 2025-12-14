@@ -7,6 +7,12 @@ const router = express.Router();
 // Public: list services
 router.get('/', serviceController.getPublicServices);
 
+// Admin: list all services (for admin dashboard)
+router.get('/admin', auth, adminOnly, serviceController.getAllServices);
+
+// Public: list services by category
+router.get('/category/:categoryId', serviceController.getServicesByCategory);
+
 // Admin: create service
 router.post('/', auth, adminOnly, serviceController.createService);
 

@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: Graphic Corner System API
+  version: '1.0.0'
+  description: |
+    OpenAPI skeleton for the Graphic Corner System. This file contains core paths for services, categories, memberships, payments, contents (tasks), and clients.
+servers:
+  - url: /api
+    description: Local API root
+paths:
+  /services:
+    get:
+      summary: List public services
+      tags: [Services]
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: Create a new service (admin)
+      tags: [Services]
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Created
+  /services/admin:
+    get:
+      summary: Admin: list all services
+      tags: [Services]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+  /services/{id}:
+    put:
+      summary: Update a service (admin)
+      tags: [Services]
+      parameters:
+        - name: id
+          in: path
+          required: true
+      responses:
+        '200':
+          description: Updated
+    delete:
+      summary: Delete a service (admin)
+      tags: [Services]
+      parameters:
+        - name: id
+          in: path
+          required: true
+      responses:
+        '200':
+          description: Deleted
+  /categories:
+    get:
+      summary: List categories
+      tags: [Categories]
+    post:
+      summary: Create category (admin)
+      tags: [Categories]
+      security:
+        - bearerAuth: []
+  /memberships:
+    get:
+      summary: List membership packages
+      tags: [Memberships]
+    post:
+      summary: Create membership package (admin)
+      tags: [Memberships]
+      security:
+        - bearerAuth: []
+  /memberships/{id}/purchase:
+    post:
+      summary: Purchase membership for a client
+      tags: [Memberships]
+      requestBody:
+        required: true
+      responses:
+        '200':
+          description: Purchased
+  /payments:
+    get:
+      summary: Admin: list payments
+      tags: [Payments]
+      security:
+        - bearerAuth: []
+    post:
+      summary: Record a payment
+      tags: [Payments]
+  /payments/client/{clientId}:
+    get:
+      summary: Get payments for a client
+      tags: [Payments]
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+  /contents:
+    get:
+      summary: Admin: list tasks
+      tags: [Contents]
+      security:
+        - bearerAuth: []
+    post:
+      summary: Admin: create task for client
+      tags: [Contents]
+      security:
+        - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Service:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        category:
+          type: string
+    Category:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+    Membership:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+        includedServices:
+          type: array
+          items:
+            type: object
+            properties:
+              service:
+                type: string
+              count:
+                type: integer
+              priceOverride:
+                type: number
+    Payment:
+      type: object
+      properties:
+        _id:
+          type: string
+        clientId:
+          type: string
+        amount:
+          type: number
+        status:
+          type: string
+    Content (Task):
+      type: object
+      properties:
+        _id:
+          type: string
+        clientId:
+          type: string
+        title:
+          type: string
+        status:
+          type: string

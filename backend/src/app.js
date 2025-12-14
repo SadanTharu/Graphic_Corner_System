@@ -24,6 +24,9 @@ app.use('/api/contents', require('./routes/contents'));
 app.use('/api/payments', require('./routes/payments'));
 app.use('/api/services', require('./routes/services'));
 app.use('/api/contact', require('./routes/contact'));
+app.use('/api/memberships', require('./routes/memberships'));
+app.use('/api/custom-packages', require('./routes/customPackages'));
+app.use('/api/categories', require('./routes/categories'));
 
 
 module.exports = app;

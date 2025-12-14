@@ -7,9 +7,30 @@ clientId: { type: String, required: true, unique: true },
 name: String,
 contact: String,
 email: { type: String, required: true, unique: true },
-status: String,
+status: { type: String, enum: ['active', 'inactive'], default: 'active' },
 password: { type: String, required: true },
-role: { type: String, enum: ['client','admin'], default: 'client' }
+role: { type: String, enum: ['client','admin'], default: 'client' },
+customerType: { 
+  type: String, 
+  enum: ['monthly_subscription', 'task_based'], 
+  default: 'task_based',
+  description: 'monthly_subscription = Membership packages, task_based = Custom task packages'
+},
+membershipId: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: 'Membership',
+  description: 'Reference to membership package if monthly_subscription type'
+},
+subscriptionStartDate: Date,
+subscriptionEndDate: Date,
+tasksCompleted: { type: Number, default: 0 },
+totalSpent: { type: Number, default: 0 }
+  ,
+// Service entitlements granted by membership or admin (remaining counts)
+serviceEntitlements: [{
+  service: { type: mongoose.Schema.Types.ObjectId, ref: 'Service' },
+  remaining: { type: Number, default: 0 }
+}]
 }, { timestamps: true });
 
 

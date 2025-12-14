@@ -10,8 +10,14 @@ router.get('/', auth, adminOnly, clientController.listClients);
 // Admin: create a new client/customer
 router.post('/', auth, adminOnly, clientController.createClient);
 
+// Admin: get client detail
+router.get('/:id', auth, adminOnly, clientController.getClientDetail);
+
 // Admin: update client
 router.put('/:id', auth, adminOnly, clientController.updateClient);
+
+// Admin: assign membership to client
+router.put('/:id/membership', auth, adminOnly, clientController.assignMembership);
 
 // Admin: delete client
 router.delete('/:id', auth, adminOnly, clientController.deleteClient);
