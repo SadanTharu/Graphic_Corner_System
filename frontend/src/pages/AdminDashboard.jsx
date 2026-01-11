@@ -7,7 +7,7 @@ import '../styles/admin-dashboard.css'
 
 export default function AdminDashboard() {
   useEffect(() => { setAuthToken(localStorage.getItem('token')); }, [])
-  
+
   // States
   const [activeTab, setActiveTab] = useState('overview')
   const [clients, setClients] = useState([])
@@ -186,9 +186,24 @@ export default function AdminDashboard() {
       description: content.description,
       deadline: content.deadline?.split('T')[0],
       status: content.status,
-      clientId: content.clientId
+      // Ensure we use the string clientId for editing to match the select dropdown
+      clientId: clients.find(c => c._id === content.clientId || c.clientId === content.clientId)?.clientId || content.clientId
     })
     setActiveTab('tasks')
+  }
+
+  const handleVerifyPayment = async (paymentId, status) => {
+    const notes = window.prompt(`Enter notes for this ${status} (optional):`)
+    if (notes === null) return; // Cancelled
+
+    try {
+      await API.post(`/payments/verify/${paymentId}`, { status, notes })
+      setFormSuccess(`Payment ${status} successfully!`)
+      loadPayments()
+      loadClients() // Reload clients to see updated advance status
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Verification failed')
+    }
   }
 
   // Calculate stats
@@ -198,6 +213,7 @@ export default function AdminDashboard() {
     totalTasks: contents.length,
     pendingTasks: contents.filter(c => c.status === 'pending').length,
     completedTasks: contents.filter(c => c.status === 'completed').length,
+    totalPackages: packages.length + (typeof customPackages !== 'undefined' ? 0 : 0), // Placeholder for packages+custom
     totalPayments: payments.length,
     paidPayments: payments.filter(p => p.status === 'paid').length,
     pendingPayments: payments.filter(p => p.status === 'pending').length,
@@ -206,7 +222,15 @@ export default function AdminDashboard() {
 
   // Get client name by ID
   const getClientName = (clientId) => {
-    const client = clients.find(c => c._id === clientId)
+    if (!clientId) return 'Unknown'
+    if (clients.length === 0) return 'Loading...'
+
+    // Check if clientId is already a populated object
+    if (clientId.name) return clientId.name
+
+    // Otherwise lookup by ID (handles both Database _id and String clientId)
+    const id = clientId.toString()
+    const client = clients.find(c => (c._id?.toString() === id) || (c.clientId === id))
     return client?.name || 'Unknown'
   }
 
@@ -217,7 +241,7 @@ export default function AdminDashboard() {
           <h2 className="dashboard-title">Admin Dashboard</h2>
           <p className="dashboard-subtitle">Manage your business</p>
         </div>
-        <button 
+        <button
           className="btn-create-customer"
           onClick={() => { setShowCreateForm(!showCreateForm); setEditingClient(null) }}
         >
@@ -270,9 +294,9 @@ export default function AdminDashboard() {
               background: `conic-gradient(#667eea 0deg ${stats.completedTasks / stats.totalTasks * 360}deg, #764ba2 ${stats.completedTasks / stats.totalTasks * 360}deg ${(stats.completedTasks + stats.pendingTasks) / stats.totalTasks * 360}deg, #cbd5e0 ${(stats.completedTasks + stats.pendingTasks) / stats.totalTasks * 360}deg)`
             }}></div>
             <div className="pie-legend">
-              <div><span style={{background: '#667eea'}}></span> Completed ({stats.completedTasks})</div>
-              <div><span style={{background: '#764ba2'}}></span> Pending ({stats.pendingTasks})</div>
-              <div><span style={{background: '#cbd5e0'}}></span> In Progress ({stats.totalTasks - stats.completedTasks - stats.pendingTasks})</div>
+              <div><span style={{ background: '#667eea' }}></span> Completed ({stats.completedTasks})</div>
+              <div><span style={{ background: '#764ba2' }}></span> Pending ({stats.pendingTasks})</div>
+              <div><span style={{ background: '#cbd5e0' }}></span> In Progress ({stats.totalTasks - stats.completedTasks - stats.pendingTasks})</div>
             </div>
           </div>
         </div>
@@ -283,14 +307,14 @@ export default function AdminDashboard() {
             <div className="bar-item">
               <label>Paid</label>
               <div className="bar-background">
-                <div className="bar-fill paid" style={{width: `${stats.totalPayments > 0 ? (stats.paidPayments / stats.totalPayments * 100) : 0}%`}}></div>
+                <div className="bar-fill paid" style={{ width: `${stats.totalPayments > 0 ? (stats.paidPayments / stats.totalPayments * 100) : 0}%` }}></div>
               </div>
               <span>{stats.paidPayments}/{stats.totalPayments}</span>
             </div>
             <div className="bar-item">
               <label>Pending</label>
               <div className="bar-background">
-                <div className="bar-fill pending" style={{width: `${stats.totalPayments > 0 ? (stats.pendingPayments / stats.totalPayments * 100) : 0}%`}}></div>
+                <div className="bar-fill pending" style={{ width: `${stats.totalPayments > 0 ? (stats.pendingPayments / stats.totalPayments * 100) : 0}%` }}></div>
               </div>
               <span>{stats.pendingPayments}/{stats.totalPayments}</span>
             </div>
@@ -324,14 +348,14 @@ export default function AdminDashboard() {
                     type="text"
                     placeholder="Client ID"
                     value={clientForm.clientId}
-                    onChange={(e) => setClientForm({...clientForm, clientId: e.target.value})}
+                    onChange={(e) => setClientForm({ ...clientForm, clientId: e.target.value })}
                     disabled={editingClient}
                   />
                   <input
                     type="text"
                     placeholder="Full Name"
                     value={clientForm.name}
-                    onChange={(e) => setClientForm({...clientForm, name: e.target.value})}
+                    onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })}
                   />
                 </div>
                 <div className="form-row">
@@ -339,13 +363,13 @@ export default function AdminDashboard() {
                     type="email"
                     placeholder="Email"
                     value={clientForm.email}
-                    onChange={(e) => setClientForm({...clientForm, email: e.target.value})}
+                    onChange={(e) => setClientForm({ ...clientForm, email: e.target.value })}
                   />
                   <input
                     type="tel"
                     placeholder="Contact"
                     value={clientForm.contact}
-                    onChange={(e) => setClientForm({...clientForm, contact: e.target.value})}
+                    onChange={(e) => setClientForm({ ...clientForm, contact: e.target.value })}
                   />
                 </div>
                 {!editingClient && (
@@ -353,11 +377,11 @@ export default function AdminDashboard() {
                     type="password"
                     placeholder="Password"
                     value={clientForm.password}
-                    onChange={(e) => setClientForm({...clientForm, password: e.target.value})}
+                    onChange={(e) => setClientForm({ ...clientForm, password: e.target.value })}
                   />
                 )}
                 <div className="form-row">
-                  <select value={clientForm.status} onChange={(e) => setClientForm({...clientForm, status: e.target.value})}>
+                  <select value={clientForm.status} onChange={(e) => setClientForm({ ...clientForm, status: e.target.value })}>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
                   </select>
@@ -378,7 +402,7 @@ export default function AdminDashboard() {
                     <th>ID</th>
                     <th>Name</th>
                     <th>Email</th>
-                    <th>Contact</th>
+                    <th>Advance</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
@@ -389,7 +413,16 @@ export default function AdminDashboard() {
                       <td>{c.clientId}</td>
                       <td>{c.name}</td>
                       <td>{c.email}</td>
-                      <td>{c.contact || '-'}</td>
+                      <td>
+                        {(c.customerType === 'monthly_subscription' || c.customerType === 'task_based') ? (
+                          <span className={`status-badge ${c.paymentTracking?.isAdvancePaid ? 'status-paid' : 'status-pending'}`} style={{
+                            background: c.paymentTracking?.isAdvancePaid ? '#48bb78' : '#ed8936',
+                            color: 'white'
+                          }}>
+                            {c.paymentTracking?.isAdvancePaid ? 'Paid' : 'Pending'}
+                          </span>
+                        ) : '-'}
+                      </td>
                       <td><span className={`status-badge status-${c.status || 'active'}`}>{c.status || 'active'}</span></td>
                       <td>
                         <button className="btn-action edit" onClick={() => startEditClient(c)}>Edit</button>
@@ -414,33 +447,33 @@ export default function AdminDashboard() {
                 type="text"
                 placeholder="Task Title"
                 value={contentForm.title}
-                onChange={(e) => setContentForm({...contentForm, title: e.target.value})}
+                onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })}
               />
               <textarea
                 placeholder="Description"
                 value={contentForm.description}
-                onChange={(e) => setContentForm({...contentForm, description: e.target.value})}
+                onChange={(e) => setContentForm({ ...contentForm, description: e.target.value })}
               ></textarea>
               <div className="form-row">
                 <select
                   value={contentForm.clientId}
-                  onChange={(e) => setContentForm({...contentForm, clientId: e.target.value})}
+                  onChange={(e) => setContentForm({ ...contentForm, clientId: e.target.value })}
                 >
                   <option value="">Select Customer</option>
                   {clients.map(c => (
-                    <option key={c._id} value={c._id}>{c.name}</option>
+                    <option key={c._id} value={c.clientId}>{c.name} ({c.clientId})</option>
                   ))}
                 </select>
                 <input
                   type="date"
                   value={contentForm.deadline}
-                  onChange={(e) => setContentForm({...contentForm, deadline: e.target.value})}
+                  onChange={(e) => setContentForm({ ...contentForm, deadline: e.target.value })}
                 />
               </div>
               <div className="form-row">
                 <select
                   value={contentForm.status}
-                  onChange={(e) => setContentForm({...contentForm, status: e.target.value})}
+                  onChange={(e) => setContentForm({ ...contentForm, status: e.target.value })}
                 >
                   <option value="pending">Pending</option>
                   <option value="in_progress">In Progress</option>
@@ -502,6 +535,8 @@ export default function AdminDashboard() {
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Due Date</th>
+                    <th>Slip</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -510,8 +545,27 @@ export default function AdminDashboard() {
                       <td>{p._id.slice(0, 8)}...</td>
                       <td>{getClientName(p.clientId)}</td>
                       <td>${p.amount?.toFixed(2) || '0.00'}</td>
-                      <td><span className={`status-badge status-${p.status}`}>{p.status}</span></td>
+                      <td>
+                        <span className={`status-badge status-${p.status}`} style={{
+                          background: p.status === 'pending' ? '#ed8936' : p.status === 'paid' ? '#48bb78' : '#e53e3e'
+                        }}>
+                          {p.status}
+                        </span>
+                      </td>
                       <td>{p.dueDate ? new Date(p.dueDate).toLocaleDateString() : '-'}</td>
+                      <td>
+                        {p.slipUrl ? (
+                          <a href={p.slipUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#667eea', textDecoration: 'underline' }}>View Slip</a>
+                        ) : '-'}
+                      </td>
+                      <td>
+                        {p.status === 'pending' && p.slipUrl && (
+                          <div style={{ display: 'flex', gap: '5px' }}>
+                            <button className="btn-action edit" onClick={() => handleVerifyPayment(p._id, 'verified')} style={{ background: '#48bb78' }}>Verify</button>
+                            <button className="btn-action delete" onClick={() => handleVerifyPayment(p._id, 'rejected')}>Reject</button>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

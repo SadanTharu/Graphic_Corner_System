@@ -4,7 +4,7 @@ const Client = require('../models/Client');
 // Get all custom packages (admin)
 const getAllCustomPackages = async (req, res) => {
   try {
-    const packages = await CustomPackage.find().populate('clientId', 'name email clientId').sort('-createdAt');
+    const packages = await CustomPackage.find().sort('-createdAt');
     res.json(packages);
   } catch (err) {
     res.status(500).json({ message: 'Failed to fetch packages', error: err.message });
@@ -25,22 +25,30 @@ const getClientCustomPackages = async (req, res) => {
 // Create custom package (admin only)
 const createCustomPackage = async (req, res) => {
   try {
-    const { clientId, packageName, description, price, taskCount, revisionLimit, deliveryDays, features, notes } = req.body;
+    const { clientId, packageName, description, price, taskCount, billingDay, services, revisionLimit, deliveryDays, features, notes } = req.body;
 
-    if (!clientId || !packageName || !price || !taskCount) {
-      return res.status(400).json({ message: 'ClientId, package name, price, and task count are required' });
+    if (!clientId || !packageName || !price) {
+      return res.status(400).json({ message: 'ClientId, package name, and price are required' });
     }
 
-    // Verify client exists
-    const client = await Client.findById(clientId);
+    // Verify client exists (search by string clientId)
+    const client = await Client.findOne({ clientId });
     if (!client) return res.status(404).json({ message: 'Client not found' });
 
+    // Calculate taskCount if not provided but services exist
+    let finalTaskCount = taskCount;
+    if (!finalTaskCount && services && services.length > 0) {
+      finalTaskCount = services.reduce((sum, s) => sum + (Number(s.count) || 0), 0);
+    }
+
     const customPackage = new CustomPackage({
-      clientId,
+      clientId, // This is now the string ID
       packageName,
       description,
       price,
-      taskCount,
+      taskCount: finalTaskCount || 0,
+      billingDay: billingDay || 27,
+      services: services || [],
       revisionLimit,
       deliveryDays,
       features: features || [],
@@ -49,9 +57,17 @@ const createCustomPackage = async (req, res) => {
     });
 
     await customPackage.save();
-    
+
     // Update client to show they have a custom package
     client.customerType = 'task_based';
+    // If it's a new subscription/package, set the 25% advance requirement
+    client.paymentTracking = {
+      ...client.paymentTracking,
+      isAdvancePaid: false,
+      nextPaymentDue: price * 0.25,
+      nextPaymentDate: new Date()
+    };
+
     await client.save();
 
     res.status(201).json({ message: 'Custom package created successfully', package: customPackage });
@@ -64,9 +80,16 @@ const createCustomPackage = async (req, res) => {
 const updateCustomPackage = async (req, res) => {
   try {
     const { id } = req.params;
+    const updateData = { ...req.body };
+
+    // Recalculate taskCount if services are updated
+    if (updateData.services && updateData.services.length > 0) {
+      updateData.taskCount = updateData.services.reduce((sum, s) => sum + (Number(s.count) || 0), 0);
+    }
+
     const customPackage = await CustomPackage.findByIdAndUpdate(
       id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     ).populate('clientId', 'name email clientId');
 
@@ -89,7 +112,7 @@ const updateTaskProgress = async (req, res) => {
 
     if (tasksCompleted !== undefined) {
       customPackage.tasksCompleted = Math.min(tasksCompleted, customPackage.taskCount);
-      
+
       // Auto-complete package if all tasks done
       if (customPackage.tasksCompleted >= customPackage.taskCount) {
         customPackage.status = 'completed';
@@ -118,7 +141,7 @@ const updatePaymentStatus = async (req, res) => {
 
     if (amountPaid !== undefined) {
       customPackage.amountPaid = amountPaid;
-      
+
       // Auto-update payment status
       if (amountPaid >= customPackage.price) {
         customPackage.paymentStatus = 'paid';

@@ -25,4 +25,7 @@ router.delete('/:id', auth, adminOnly, clientController.deleteClient);
 // Client: get own profile
 router.get('/me', auth, clientController.getProfile);
 
+// Client: Self-subscribe to a package
+router.post('/subscribe/:membershipId', auth, clientController.subscribe);
+
 module.exports = router;

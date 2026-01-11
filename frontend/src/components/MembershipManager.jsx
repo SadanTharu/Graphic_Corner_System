@@ -17,8 +17,29 @@ export default function MembershipManager() {
     supportLevel: 'basic',
     icon: '📦',
     color: '#667eea',
-    features: []
+    features: [],
+    servicePackages: [],
+    billingDay: 27
   })
+
+  const addServicePackage = () => {
+    setFormData({
+      ...formData,
+      servicePackages: [...(formData.servicePackages || []), { title: '', count: 0, description: '' }]
+    })
+  }
+
+  const removeServicePackage = (index) => {
+    const list = [...formData.servicePackages]
+    list.splice(index, 1)
+    setFormData({ ...formData, servicePackages: list })
+  }
+
+  const handleServiceChange = (index, field, value) => {
+    const list = [...formData.servicePackages]
+    list[index][field] = value
+    setFormData({ ...formData, servicePackages: list })
+  }
 
   useEffect(() => {
     loadMemberships()
@@ -51,7 +72,7 @@ export default function MembershipManager() {
         await API.post('/memberships', formData)
         setSuccess('Membership created successfully!')
       }
-      
+
       resetForm()
       loadMemberships()
     } catch (err) {
@@ -73,7 +94,10 @@ export default function MembershipManager() {
 
   const startEdit = (membership) => {
     setEditingId(membership._id)
-    setFormData(membership)
+    setFormData({
+      ...membership,
+      servicePackages: membership.servicePackages || []
+    })
     setShowForm(true)
   }
 
@@ -88,7 +112,9 @@ export default function MembershipManager() {
       supportLevel: 'basic',
       icon: '📦',
       color: '#667eea',
-      features: []
+      features: [],
+      servicePackages: [],
+      billingDay: 27
     })
     setEditingId(null)
     setShowForm(false)
@@ -111,46 +137,56 @@ export default function MembershipManager() {
           <div className="form-row">
             <input
               type="text"
-              placeholder="Package Name (e.g., Basic, Professional)"
+              placeholder="Package Name (e.g., Video Gold Pack)"
               value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             />
             <input
               type="number"
-              placeholder="Monthly Price"
+              placeholder="Total Package Price"
               value={formData.price}
-              onChange={(e) => setFormData({...formData, price: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, price: e.target.value })}
             />
           </div>
 
           <textarea
             placeholder="Description"
             value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           ></textarea>
 
-          <div className="form-row">
-            <input
-              type="number"
-              placeholder="Max Tasks/Month"
-              value={formData.taskLimit}
-              onChange={(e) => setFormData({...formData, taskLimit: e.target.value})}
-            />
-            <input
-              type="number"
-              placeholder="Revision Limit"
-              value={formData.revisionLimit}
-              onChange={(e) => setFormData({...formData, revisionLimit: e.target.value})}
-            />
+          <div style={{ margin: '1.5rem 0', padding: '1rem', border: '1px dashed #cbd5e0', borderRadius: '8px' }}>
+            <h4 style={{ marginBottom: '1rem' }}>Included Service Counts</h4>
+            {formData.servicePackages?.map((sp, idx) => (
+              <div key={idx} className="form-row" style={{ marginBottom: '0.5rem' }}>
+                <input
+                  type="text"
+                  placeholder="Service Title (e.g. Short Videos)"
+                  value={sp.title}
+                  onChange={(e) => handleServiceChange(idx, 'title', e.target.value)}
+                  style={{ flex: 2 }}
+                />
+                <input
+                  type="number"
+                  placeholder="Count"
+                  value={sp.count}
+                  onChange={(e) => handleServiceChange(idx, 'count', e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button type="button" onClick={() => removeServicePackage(idx)} style={{ background: '#feb2b2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>✕</button>
+              </div>
+            ))}
+            <button type="button" onClick={addServicePackage} className="btn-action" style={{ width: 'auto' }}>+ Add Service Item</button>
           </div>
 
           <div className="form-row">
-            <select value={formData.billingCycle} onChange={(e) => setFormData({...formData, billingCycle: e.target.value})}>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-              <option value="yearly">Yearly</option>
-            </select>
-            <select value={formData.supportLevel} onChange={(e) => setFormData({...formData, supportLevel: e.target.value})}>
+            <input
+              type="number"
+              placeholder="Billing Day (1-31)"
+              value={formData.billingDay}
+              onChange={(e) => setFormData({ ...formData, billingDay: e.target.value })}
+            />
+            <select value={formData.supportLevel} onChange={(e) => setFormData({ ...formData, supportLevel: e.target.value })}>
               <option value="basic">Basic Support</option>
               <option value="priority">Priority Support</option>
               <option value="vip">VIP Support</option>
@@ -162,13 +198,13 @@ export default function MembershipManager() {
               type="text"
               placeholder="Icon (emoji)"
               value={formData.icon}
-              onChange={(e) => setFormData({...formData, icon: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
               maxLength="2"
             />
             <input
               type="color"
               value={formData.color}
-              onChange={(e) => setFormData({...formData, color: e.target.value})}
+              onChange={(e) => setFormData({ ...formData, color: e.target.value })}
             />
           </div>
 
@@ -184,12 +220,12 @@ export default function MembershipManager() {
           <p className="no-data">No memberships yet</p>
         ) : (
           memberships.map(m => (
-            <div key={m._id} className="membership-card" style={{borderTopColor: m.color}}>
+            <div key={m._id} className="membership-card" style={{ borderTopColor: m.color }}>
               <div className="membership-icon">{m.icon}</div>
               <h4>{m.name}</h4>
               <p className="price">${m.price}/{m.billingCycle}</p>
               <p className="description">{m.description}</p>
-              
+
               <div className="features">
                 <p><strong>Tasks:</strong> {m.taskLimit || 'Unlimited'}</p>
                 <p><strong>Revisions:</strong> {m.revisionLimit || 'Unlimited'}</p>

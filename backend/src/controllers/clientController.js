@@ -15,21 +15,22 @@ exports.listClients = async (req, res) => {
 // Admin: create a new client/customer
 exports.createClient = async (req, res) => {
   try {
-    const { clientId, name, contact, email, status, password, customerType, membershipId } = req.body;
-    
+    const { clientId, username, name, contact, email, status, password, customerType, membershipId } = req.body;
+
     // Validation
     if (!clientId || !email || !password) {
       return res.status(400).json({ message: 'clientId, email, and password are required' });
     }
-    
+
     // Check if client already exists
-    const existing = await Client.findOne({ $or: [{ email }, { clientId }] });
+    const existing = await Client.findOne({ $or: [{ email }, { clientId }, { username }] });
     if (existing) {
-      return res.status(400).json({ message: 'Client already exists with that email or clientId' });
+      return res.status(400).json({ message: 'Client already exists with that email, clientId, or username' });
     }
-    
+
     const newClient = new Client({
       clientId,
+      username: username || email.split('@')[0],
       name: name || '',
       contact: contact || '',
       email,
@@ -41,9 +42,9 @@ exports.createClient = async (req, res) => {
       subscriptionStartDate: customerType === 'monthly_subscription' ? new Date() : null,
       subscriptionEndDate: customerType === 'monthly_subscription' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null
     });
-    
+
     await newClient.save();
-    await newClient.populate('membershipId', 'name price billingCycle');
+    await newClient.populate('membershipId', 'name price billingCycle servicePackages');
     res.json({ message: 'Client created successfully', client: newClient });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -55,19 +56,19 @@ exports.updateClient = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, contact, status, customerType, membershipId } = req.body;
-    
+
     const updateData = { name, contact, status, customerType };
-    
+
     if (customerType === 'monthly_subscription' && membershipId) {
       updateData.membershipId = membershipId;
       updateData.subscriptionStartDate = new Date();
       updateData.subscriptionEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     }
-    
+
     const client = await Client.findByIdAndUpdate(id, updateData, { new: true })
       .populate('membershipId', 'name price billingCycle');
     if (!client) return res.status(404).json({ message: 'Client not found' });
-    
+
     res.json({ message: 'Client updated', client });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -79,7 +80,7 @@ exports.deleteClient = async (req, res) => {
   try {
     const { id } = req.params;
     const client = await Client.findByIdAndDelete(id);
-    
+
     if (!client) return res.status(404).json({ message: 'Client not found' });
     res.json({ message: 'Client deleted' });
   } catch (err) {
@@ -97,12 +98,9 @@ exports.assignMembership = async (req, res) => {
       return res.status(400).json({ message: 'membershipId is required' });
     }
 
-    // Load membership with included services
-    const membership = await require('../models/Membership').findById(membershipId).populate('includedServices.service', 'title price');
+    const Membership = require('../models/Membership');
+    const membership = await Membership.findById(membershipId);
     if (!membership) return res.status(404).json({ message: 'Membership not found' });
-
-    // Build service entitlements from membership included services
-    const entitlements = (membership.includedServices || []).map(s => ({ service: s.service._id || s.service, remaining: s.count || 0 }));
 
     const client = await Client.findByIdAndUpdate(
       id,
@@ -111,10 +109,14 @@ exports.assignMembership = async (req, res) => {
         membershipId,
         subscriptionStartDate: new Date(),
         subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        serviceEntitlements: entitlements
+        paymentTracking: {
+          isAdvancePaid: false,
+          nextPaymentDue: membership.price * 0.25,
+          nextPaymentDate: new Date()
+        }
       },
       { new: true }
-    ).populate('membershipId', 'name price billingCycle taskLimit').populate('serviceEntitlements.service', 'title price');
+    ).populate('membershipId', 'name price billingCycle taskLimit');
 
     if (!client) return res.status(404).json({ message: 'Client not found' });
 
@@ -140,13 +142,46 @@ exports.getClientDetail = async (req, res) => {
   }
 };
 
+// Client: Self-subscribe to a package
+exports.subscribe = async (req, res) => {
+  try {
+    const { membershipId } = req.params;
+    const Membership = require('../models/Membership');
+    const membership = await Membership.findById(membershipId);
+    if (!membership) return res.status(404).json({ message: 'Membership not found' });
+
+    const client = await Client.findByIdAndUpdate(
+      req.user.id,
+      {
+        customerType: 'monthly_subscription',
+        membershipId,
+        subscriptionStartDate: new Date(),
+        subscriptionEndDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        paymentTracking: {
+          isAdvancePaid: false,
+          nextPaymentDue: membership.price * 0.25,
+          nextPaymentDate: new Date()
+        }
+      },
+      { new: true }
+    ).populate('membershipId');
+
+    res.json({ message: 'Subscribed! Please pay the 25% advance to start.', client });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
+
 // Client: get own profile
 exports.getProfile = async (req, res) => {
   try {
     const client = await Client.findById(req.user.id)
       .select('-password')
-      .populate('membershipId', 'name price billingCycle taskLimit revisionLimit');
-    
+      .populate({
+        path: 'membershipId',
+        select: 'name price billingCycle taskLimit revisionLimit servicePackages billingDay icon color description'
+      });
+
     res.json(client);
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });

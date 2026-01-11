@@ -1,101 +1,108 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import API from '../api'
+import heroImg from '../assets/hero.png'
 import '../styles/public-home.css'
 
 export default function PublicHome() {
+  const [memberships, setMemberships] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    API.get('/memberships')
+      .then(res => {
+        setMemberships(res.data)
+        setLoading(false)
+      })
+      .catch(err => {
+        console.error('Failed to fetch memberships:', err)
+        setLoading(false)
+      })
+  }, [])
+
   return (
     <div className="public-home">
       {/* Hero Banner */}
       <section className="hero-section">
+        <img src={heroImg} alt="Agency Visual" className="hero-background-img" />
+        <div className="hero-overlay"></div>
         <div className="hero-content">
-          <h1 className="hero-title">Create Stunning Graphics & Content</h1>
+          <h1 className="hero-title">Experience the Future of Digital Content</h1>
           <p className="hero-subtitle">
-            Professional design services for your brand. From logos to social media content, we bring your vision to life.
+            From hyper-realistic 3D animations to AI-driven video production.
+            We are the ultimate power-house for modern brands.
           </p>
-          <div className="hero-buttons">
-            <Link to="/services" className="btn btn-primary">
-              View Services
+          <div className="hero-buttons" style={{ justifyContent: 'center', display: 'flex', gap: '20px' }}>
+            <Link to="/auth/register" className="btn-premium btn-primary-glass">
+              Start Your Journey
             </Link>
-            <Link to="/contact" className="btn btn-secondary">
-              Get in Touch
+            <Link to="/services" className="btn-premium" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
+              Explore Services
             </Link>
-          </div>
-        </div>
-        <div className="hero-image">
-          <div className="hero-shape"></div>
-        </div>
-      </section>
-
-      {/* Why Choose Us */}
-      <section className="why-choose-us">
-        <div className="section-container">
-          <h2 className="section-title">Why Choose Graphic Corner?</h2>
-          <div className="features-grid">
-            <div className="feature-card">
-              <div className="feature-icon">🎨</div>
-              <h3>Creative Excellence</h3>
-              <p>Award-winning designs that make your brand stand out from the competition.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">⚡</div>
-              <h3>Quick Turnaround</h3>
-              <p>Fast delivery without compromising on quality. Most projects completed within 48 hours.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">💰</div>
-              <h3>Affordable Pricing</h3>
-              <p>Flexible packages designed to fit every budget. No hidden costs, transparent pricing.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">🤝</div>
-              <h3>Dedicated Support</h3>
-              <p>Your success is our success. We provide ongoing support and unlimited revisions.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">📱</div>
-              <h3>Modern Design</h3>
-              <p>Latest trends and techniques to keep your brand fresh and relevant.</p>
-            </div>
-            <div className="feature-card">
-              <div className="feature-icon">✨</div>
-              <h3>Custom Solutions</h3>
-              <p>Tailored designs that match your unique brand identity and requirements.</p>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="stats-section">
+      {/* Packages Section */}
+      <section id="packages" className="packages-section">
         <div className="section-container">
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-number">500+</div>
-              <div className="stat-label">Happy Clients</div>
+          <span className="section-tag">Unlimited Potential</span>
+          <h2 className="section-title">Investment <span className="text-gradient">Packages</span></h2>
+
+          {loading ? (
+            <p style={{ textAlign: 'center' }}>Loading opportunities...</p>
+          ) : (
+            <div className="packages-grid">
+              {memberships.map(pkg => (
+                <div className="package-card" key={pkg._id}>
+                  <div className="package-header">
+                    <div className="package-icon">{pkg.icon || '🚀'}</div>
+                    <h3 style={{ fontSize: '1.8rem', margin: '0.5rem 0' }}>{pkg.name}</h3>
+                    <div className="package-price-wrap">
+                      <span className="price-sub">From </span>
+                      <span className="price-main">${(pkg.price * 0.25).toLocaleString()}</span>
+                    </div>
+                    <span className="advance-tag">25% Advance to Start</span>
+                    <p style={{ marginTop: '1rem', color: '#a0aec0' }}>{pkg.description}</p>
+                  </div>
+
+                  <ul className="package-features">
+                    {/* Map servicePackages if available, otherwise features */}
+                    {pkg.servicePackages && pkg.servicePackages.length > 0 ? (
+                      pkg.servicePackages.map((sp, idx) => (
+                        <li key={idx}><strong>{sp.count}x</strong> {sp.title}</li>
+                      ))
+                    ) : (
+                      pkg.features.map((f, idx) => (
+                        <li key={idx}>{f.name}</li>
+                      ))
+                    )}
+                    <li>{pkg.supportLevel.toUpperCase()} Support</li>
+                    <li>{pkg.deliveryDays} Days Delivery</li>
+                  </ul>
+
+                  <Link to={`/auth/register?pkg=${pkg._id}`} className="btn-premium btn-primary-glass">
+                    Select Plan
+                  </Link>
+                  <p style={{ textAlign: 'center', fontSize: '0.8rem', marginTop: '1rem', opacity: 0.6 }}>
+                    Balance of ${(pkg.price * 0.75).toLocaleString()} due at month end
+                  </p>
+                </div>
+              ))}
             </div>
-            <div className="stat-card">
-              <div className="stat-number">1000+</div>
-              <div className="stat-label">Projects Completed</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">8+</div>
-              <div className="stat-label">Years Experience</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">4.9★</div>
-              <div className="stat-label">Average Rating</div>
-            </div>
-          </div>
+          )}
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="cta-section">
+      <section className="cta-premium">
         <div className="cta-content">
-          <h2>Ready to Elevate Your Brand?</h2>
-          <p>Join hundreds of satisfied clients and transform your visual presence today.</p>
-          <Link to="/contact" className="btn btn-white">
-            Start Your Project
+          <h2 className="text-gradient">Ready to Scale?</h2>
+          <p style={{ fontSize: '1.2rem', marginBottom: '3rem', opacity: 0.8 }}>
+            Join 500+ global brands leveraging our creative expertise.
+          </p>
+          <Link to="/contact" className="btn-premium btn-primary-glass" style={{ padding: '1.5rem 4rem', fontSize: '1.2rem' }}>
+            Contact Our Strategists
           </Link>
         </div>
       </section>
