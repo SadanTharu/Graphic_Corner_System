@@ -1,4 +1,5 @@
 const Client = require('../models/Client');
+const { generateContentsFromPackage } = require('../utils/automation');
 
 // Admin: list all clients
 exports.listClients = async (req, res) => {
@@ -120,6 +121,9 @@ exports.assignMembership = async (req, res) => {
 
     if (!client) return res.status(404).json({ message: 'Client not found' });
 
+    // Automate content creation
+    await generateContentsFromPackage(client.clientId, membership.servicePackages || []);
+
     res.json({ message: 'Membership assigned successfully', client });
   } catch (err) {
     res.status(500).json({ message: 'Server error', error: err.message });
@@ -165,6 +169,9 @@ exports.subscribe = async (req, res) => {
       },
       { new: true }
     ).populate('membershipId');
+
+    // Automate content creation
+    await generateContentsFromPackage(client.clientId, membership.servicePackages || []);
 
     res.json({ message: 'Subscribed! Please pay the 25% advance to start.', client });
   } catch (err) {

@@ -25,7 +25,7 @@ export default function AdminDashboard() {
     clientId: '', name: '', email: '', password: '', contact: '', status: 'active'
   })
   const [contentForm, setContentForm] = useState({
-    title: '', description: '', deadline: '', status: 'pending', clientId: ''
+    title: '', notes: '', deadline: '', status: 'pending', clientId: '', driveLink: ''
   })
 
   // Load all data
@@ -144,7 +144,7 @@ export default function AdminDashboard() {
     try {
       await API.post('/contents', contentForm)
       setFormSuccess('Task created successfully!')
-      setContentForm({ title: '', description: '', deadline: '', status: 'pending', clientId: '' })
+      setContentForm({ title: '', notes: '', deadline: '', status: 'pending', clientId: '', driveLink: '' })
       loadContents()
     } catch (err) {
       setFormError(err.response?.data?.message || 'Failed to create task')
@@ -155,14 +155,16 @@ export default function AdminDashboard() {
     e.preventDefault()
     setFormError('')
     setFormSuccess('')
+    const { _id, __v, createdAt, updatedAt, ...updateData } = contentForm;
 
     try {
-      await API.put(`/contents/${editingContent._id}`, contentForm)
+      await API.put(`/contents/${editingContent._id || editingContent}`, updateData)
       setFormSuccess('Task updated successfully!')
       setEditingContent(null)
-      setContentForm({ title: '', description: '', deadline: '', status: 'pending', clientId: '' })
+      setContentForm({ title: '', notes: '', deadline: '', status: 'pending', clientId: '', driveLink: '' })
       loadContents()
     } catch (err) {
+      console.error('Update Error:', err);
       setFormError(err.response?.data?.message || 'Failed to update task')
     }
   }
@@ -182,12 +184,12 @@ export default function AdminDashboard() {
   const startEditContent = (content) => {
     setEditingContent(content)
     setContentForm({
-      title: content.title,
-      description: content.description,
-      deadline: content.deadline?.split('T')[0],
-      status: content.status,
-      // Ensure we use the string clientId for editing to match the select dropdown
-      clientId: clients.find(c => c._id === content.clientId || c.clientId === content.clientId)?.clientId || content.clientId
+      title: content.title || '',
+      notes: content.notes || '',
+      deadline: content.deadline ? (content.deadline.includes('T') ? content.deadline.split('T')[0] : content.deadline) : '',
+      status: content.status || 'pending',
+      clientId: content.clientId || '',
+      driveLink: content.driveLink || ''
     })
     setActiveTab('tasks')
   }
@@ -450,9 +452,9 @@ export default function AdminDashboard() {
                 onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })}
               />
               <textarea
-                placeholder="Description"
-                value={contentForm.description}
-                onChange={(e) => setContentForm({ ...contentForm, description: e.target.value })}
+                placeholder="Notes / Description"
+                value={contentForm.notes}
+                onChange={(e) => setContentForm({ ...contentForm, notes: e.target.value })}
               ></textarea>
               <div className="form-row">
                 <select
@@ -479,6 +481,12 @@ export default function AdminDashboard() {
                   <option value="in_progress">In Progress</option>
                   <option value="completed">Completed</option>
                 </select>
+                <input
+                  type="text"
+                  placeholder="Drive Link (Full URL)"
+                  value={contentForm.driveLink}
+                  onChange={(e) => setContentForm({ ...contentForm, driveLink: e.target.value })}
+                />
                 <button type="submit" className="btn-submit">{editingContent ? 'Update Task' : 'Create Task'}</button>
               </div>
             </form>
@@ -496,6 +504,7 @@ export default function AdminDashboard() {
                     <th>Customer</th>
                     <th>Deadline</th>
                     <th>Status</th>
+                    <th>Link</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -506,6 +515,11 @@ export default function AdminDashboard() {
                       <td>{getClientName(c.clientId)}</td>
                       <td>{new Date(c.deadline).toLocaleDateString()}</td>
                       <td><span className={`status-badge status-${c.status}`}>{c.status}</span></td>
+                      <td>
+                        {c.driveLink ? (
+                          <a href={c.driveLink} target="_blank" rel="noopener noreferrer" style={{ color: '#00d2ff', textDecoration: 'underline' }}>View</a>
+                        ) : '-'}
+                      </td>
                       <td>
                         <button className="btn-action edit" onClick={() => startEditContent(c)}>Edit</button>
                         <button className="btn-action delete" onClick={() => handleDeleteContent(c._id)}>Delete</button>

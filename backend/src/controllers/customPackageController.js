@@ -1,5 +1,6 @@
 const CustomPackage = require('../models/CustomPackage');
 const Client = require('../models/Client');
+const { generateContentsFromPackage } = require('../utils/automation');
 
 // Get all custom packages (admin)
 const getAllCustomPackages = async (req, res) => {
@@ -57,6 +58,9 @@ const createCustomPackage = async (req, res) => {
     });
 
     await customPackage.save();
+
+    // Automate content creation
+    await generateContentsFromPackage(clientId, services || []);
 
     // Update client to show they have a custom package
     client.customerType = 'task_based';

@@ -77,7 +77,8 @@ export default function ClientDashboard() {
   }
 
   const activeContents = contents.filter(c => c.status !== 'completed') || []
-  const completedContents = contents.filter(c => c.status === 'completed') || []
+  const completedContents = (contents.filter(c => c.status === 'completed') || [])
+    .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
   const pendingPayments = payments.filter(p => p.status === 'pending') || []
 
   return (
@@ -283,24 +284,57 @@ export default function ClientDashboard() {
 
                 <div className="overview-section">
                   <h3>Upcoming Payments</h3>
-                  {!profile?.paymentTracking?.isAdvancePaid && profile?.membershipId && (
-                    <div className="list-item" style={{ borderLeft: '4px solid #ed8936', background: 'rgba(237, 137, 54, 0.05)' }}>
-                      <div className="item-title">Initial 25% Advance</div>
-                      <div className="item-amount">${(profile.membershipId.price * 0.25).toLocaleString()}</div>
-                    </div>
-                  )}
-                  {pendingPayments.length === 0 ? (
-                    <p className="no-data">No other pending payments</p>
-                  ) : (
-                    <div className="items-list">
-                      {pendingPayments.slice(0, 3).map(p => (
-                        <div key={p._id} className="list-item">
-                          <div className="item-title">{p.title}</div>
-                          <div className="item-amount">${p.amount}</div>
+                  <div className="items-list">
+                    {/* 1. Advance Payment (if pending) */}
+                    {!profile?.paymentTracking?.isAdvancePaid && (profile?.membershipId || customPackages[0]) && (
+                      <div className="list-item" style={{ borderLeft: '4px solid #ed8936', background: 'rgba(237, 137, 54, 0.05)', padding: '15px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div className="item-title" style={{ fontWeight: 600 }}>Initial 25% Advance</div>
+                            <div className="item-date" style={{ fontSize: '0.8rem', opacity: 0.7 }}>Due to start services</div>
+                          </div>
+                          <div className="item-amount" style={{ fontWeight: 700, fontSize: '1.2rem', color: '#ed8936' }}>
+                            ${((profile?.membershipId?.price || customPackages[0]?.price || 0) * 0.25).toLocaleString()}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      </div>
+                    )}
+
+                    {/* 2. Monthly Balance (if advance already paid) */}
+                    {profile?.paymentTracking?.isAdvancePaid && (profile?.membershipId || customPackages[0]) && (
+                      <div className="list-item" style={{ borderLeft: '4px solid #48bb78', background: 'rgba(72, 187, 120, 0.05)', padding: '15px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div>
+                            <div className="item-title" style={{ fontWeight: 600 }}>Monthly Balance (75%)</div>
+                            <div className="item-date" style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                              Next Billing: Every {profile?.membershipId?.billingDay || customPackages[0]?.billingDay || 27}th
+                            </div>
+                          </div>
+                          <div className="item-amount" style={{ fontWeight: 700, fontSize: '1.2rem', color: '#48bb78' }}>
+                            ${((profile?.membershipId?.price || customPackages[0]?.price || 0) * 0.75).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3. Manually Uploaded Proofs (Pending Verification) */}
+                    {pendingPayments.length > 0 && (
+                      <div style={{ marginTop: '10px' }}>
+                        <p style={{ fontSize: '0.8rem', opacity: 0.5, marginBottom: '5px' }}>Pending Verification</p>
+                        {pendingPayments.map(p => (
+                          <div key={p._id} className="list-item" style={{ fontSize: '0.9rem', opacity: 0.8 }}>
+                            <div className="item-title">{p.title}</div>
+                            <div className="item-amount">${p.amount}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* 4. No Payments Case */}
+                    {!profile?.membershipId && customPackages.length === 0 && pendingPayments.length === 0 && (
+                      <p className="no-data">No upcoming payments</p>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -372,6 +406,40 @@ export default function ClientDashboard() {
               <h2 className="content-title">Content Progress</h2>
 
               <div className="content-sections">
+                {completedContents.length > 0 && (
+                  <div className="section">
+                    <h3 className="subsection-title">Completed</h3>
+                    <div className="content-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Title</th>
+                            <th>Completed</th>
+                            <th>Link</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {completedContents.map(c => (
+                            <tr key={c._id}>
+                              <td>{c.title}</td>
+                              <td>✅ Completed</td>
+                              <td>
+                                {c.driveLink ? (
+                                  <a href={c.driveLink} target="_blank" rel="noopener noreferrer" className="link-btn">
+                                    Download
+                                  </a>
+                                ) : (
+                                  <span>-</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
                 {activeContents.length > 0 && (
                   <div className="section">
                     <h3 className="subsection-title">Active Tasks</h3>
@@ -395,40 +463,6 @@ export default function ClientDashboard() {
                                 {c.driveLink ? (
                                   <a href={c.driveLink} target="_blank" rel="noopener noreferrer" className="link-btn">
                                     View
-                                  </a>
-                                ) : (
-                                  <span>-</span>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
-                {completedContents.length > 0 && (
-                  <div className="section">
-                    <h3 className="subsection-title">Completed</h3>
-                    <div className="content-table">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Title</th>
-                            <th>Completed</th>
-                            <th>Link</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {completedContents.map(c => (
-                            <tr key={c._id}>
-                              <td>{c.title}</td>
-                              <td>✅ Completed</td>
-                              <td>
-                                {c.driveLink ? (
-                                  <a href={c.driveLink} target="_blank" rel="noopener noreferrer" className="link-btn">
-                                    Download
                                   </a>
                                 ) : (
                                   <span>-</span>
