@@ -30,10 +30,14 @@ router.get('/transactions', auth, async (req, res) => {
 // Top up wallet
 router.post('/topup', auth, async (req, res) => {
   try {
-    const { amount, paymentMethod, reference } = req.body;
+    const { amount, paymentMethod, reference, slip } = req.body;
 
     if (amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
+    }
+
+    if (!slip) {
+      return res.status(400).json({ message: 'Payment slip is required' });
     }
 
     // Create transaction
@@ -41,33 +45,34 @@ router.post('/topup', auth, async (req, res) => {
       user: req.userId,
       type: 'topup',
       amount,
-      status: 'pending',
+      status: 'pending', // Keep as pending for admin approval
       paymentMethod,
       reference,
+      slip, // Store the payment slip URL
       description: `Wallet top-up of LKR ${amount}`
     });
 
     await transaction.save();
 
-    // In production, this would be verified by payment gateway
-    // For now, auto-approve
-    transaction.status = 'completed';
-    await transaction.save();
-
-    // Update user wallet
-    await User.findByIdAndUpdate(req.userId, {
-      $inc: { walletBalance: amount }
-    });
+    // Note: Balance will be updated after admin approval
+    // In a production system, admin would approve and update balance
+    // For testing, you can auto-approve by uncommenting below:
+    // transaction.status = 'completed';
+    // await transaction.save();
+    // await User.findByIdAndUpdate(req.userId, {
+    //   $inc: { walletBalance: amount }
+    // });
 
     const user = await User.findById(req.userId);
 
     res.json({
-      message: 'Wallet topped up successfully',
+      message: 'Top-up request submitted successfully. Awaiting admin approval.',
       transaction,
       balance: user.walletBalance
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Topup error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

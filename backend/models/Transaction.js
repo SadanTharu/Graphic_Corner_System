@@ -34,6 +34,9 @@ const transactionSchema = new mongoose.Schema({
   },
   reference: {
     type: String
+  },
+  slip: {
+    type: String // URL to payment slip image/PDF
   }
 }, {
   timestamps: true

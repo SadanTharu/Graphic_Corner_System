@@ -1,51 +1,162 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
-import { Plus, ArrowUpCircle, ArrowDownCircle, CreditCard } from 'lucide-react';
+import { Plus, ArrowUpCircle, ArrowDownCircle, CreditCard, Upload, X, File, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Wallet = () => {
-  const { wallet, addFunds } = useCart();
+  const { wallet, setWalletBalance } = useCart();
   const [showTopUp, setShowTopUp] = useState(false);
   const [amount, setAmount] = useState('');
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [reference, setReference] = useState('');
 
-  const transactions = [
-    {
-      id: 1,
-      type: 'credit',
-      amount: 5000,
-      description: 'Top-up via Bank Transfer',
-      date: '2026-02-12',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      type: 'debit',
-      amount: 1500,
-      description: 'Payment for Order #1',
-      date: '2026-02-10',
-      status: 'completed'
-    },
-    {
-      id: 3,
-      type: 'credit',
-      amount: 10000,
-      description: 'Top-up via Card',
-      date: '2026-02-08',
-      status: 'completed'
+  // Fetch wallet data on component mount
+  useEffect(() => {
+    fetchWalletData();
+  }, []);
+
+  const fetchWalletData = async () => {
+    try {
+      // Fetch balance
+      const balanceRes = await fetch('/api/wallet/balance', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (balanceRes.ok) {
+        const balanceData = await balanceRes.json();
+        setWalletBalance(balanceData.balance);
+      }
+
+      // Fetch transactions
+      const transactionsRes = await fetch('/api/wallet/transactions', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (transactionsRes.ok) {
+        const transactionsData = await transactionsRes.json();
+        setTransactions(transactionsData.transactions);
+      }
+    } catch (error) {
+      console.error('Error fetching wallet data:', error);
     }
-  ];
+  };
 
-  const handleTopUp = () => {
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please upload a valid image (JPG, PNG) or PDF file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setSelectedFile(file);
+
+    // Create preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setPreview(null);
+    }
+  };
+
+  const handleTopUp = async () => {
     const amountNum = parseInt(amount);
     if (!amountNum || amountNum <= 0) {
       toast.error('Please enter a valid amount');
       return;
     }
 
-    addFunds(amountNum);
-    toast.success(`LKR ${amountNum.toLocaleString()} added to wallet!`);
-    setAmount('');
-    setShowTopUp(false);
+    if (!selectedFile) {
+      toast.error('Please upload a payment slip');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Upload payment slip first
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const uploadRes = await fetch('/api/upload/single', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error('Failed to upload payment slip');
+      }
+
+      const uploadData = await uploadRes.json();
+
+      // Submit top-up request
+      const topUpRes = await fetch('/api/wallet/topup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          amount: amountNum,
+          paymentMethod: 'bank_transfer',
+          reference: reference || `TOPUP-${Date.now()}`,
+          slip: uploadData.file.url
+        })
+      });
+
+      if (!topUpRes.ok) {
+        throw new Error('Failed to submit top-up request');
+      }
+
+      const topUpData = await topUpRes.json();
+      
+      toast.success('Top-up request submitted successfully!');
+      setShowTopUp(false);
+      setAmount('');
+      setSelectedFile(null);
+      setPreview(null);
+      setReference('');
+      
+      // Refresh wallet data
+      fetchWalletData();
+    } catch (error) {
+      console.error('Top-up error:', error);
+      toast.error(error.message || 'Failed to process top-up');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -129,7 +240,7 @@ const Wallet = () => {
                 </div>
                 <div>
                   <p className="text-white font-medium">{transaction.description}</p>
-                  <p className="text-textGray text-sm">{transaction.date}</p>
+                  <p className="text-textGray text-sm">{formatDate(transaction.createdAt || transaction.date)}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -141,7 +252,13 @@ const Wallet = () => {
                   {transaction.type === 'credit' ? '+' : '-'} LKR{' '}
                   {transaction.amount.toLocaleString()}
                 </p>
-                <span className="text-xs px-2 py-1 bg-green-500/20 text-green-500 rounded">
+                <span className={`text-xs px-2 py-1 rounded capitalize ${
+                  transaction.status === 'completed' 
+                    ? 'bg-green-500/20 text-green-500'
+                    : transaction.status === 'pending'
+                    ? 'bg-yellow-500/20 text-yellow-500'
+                    : 'bg-red-500/20 text-red-500'
+                }`}>
                   {transaction.status}
                 </span>
               </div>
@@ -154,7 +271,22 @@ const Wallet = () => {
       {showTopUp && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-lightGray rounded-xl max-w-md w-full p-6">
-            <h3 className="text-2xl font-bold text-white mb-6">Top Up Wallet</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-white">Top Up Wallet</h3>
+              <button
+                onClick={() => {
+                  setShowTopUp(false);
+                  setSelectedFile(null);
+                  setPreview(null);
+                  setAmount('');
+                  setReference('');
+                }}
+                className="p-2 hover:bg-darker rounded-lg transition-colors"
+                disabled={uploading}
+              >
+                <X size={20} className="text-textGray" />
+              </button>
+            </div>
 
             <div className="space-y-4 mb-6">
               <div>
@@ -165,6 +297,7 @@ const Wallet = () => {
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="Enter amount"
                   className="input-field"
+                  disabled={uploading}
                 />
               </div>
 
@@ -175,36 +308,112 @@ const Wallet = () => {
                     key={quickAmount}
                     onClick={() => setAmount(quickAmount.toString())}
                     className="py-2 bg-darker text-textGray rounded-lg hover:bg-primary hover:text-white transition-all text-sm font-medium"
+                    disabled={uploading}
                   >
                     {quickAmount.toLocaleString()}
                   </button>
                 ))}
               </div>
 
+              {/* Reference Number */}
+              <div>
+                <label className="label">Transaction Reference (Optional)</label>
+                <input
+                  type="text"
+                  value={reference}
+                  onChange={(e) => setReference(e.target.value)}
+                  placeholder="Enter bank reference number"
+                  className="input-field"
+                  disabled={uploading}
+                />
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <label className="label">Payment Slip *</label>
+                <div className="mt-2">
+                  <input
+                    type="file"
+                    id="payment-slip"
+                    accept="image/jpeg,image/jpg,image/png,application/pdf"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    disabled={uploading}
+                  />
+                  <label
+                    htmlFor="payment-slip"
+                    className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-lg cursor-pointer transition-all ${
+                      selectedFile
+                        ? 'border-primary bg-primary/10'
+                        : 'border-textGray hover:border-primary bg-darker hover:bg-darker/50'
+                    } ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    {preview ? (
+                      <img
+                        src={preview}
+                        alt="Preview"
+                        className="max-h-36 object-contain rounded"
+                      />
+                    ) : selectedFile ? (
+                      <div className="flex flex-col items-center">
+                        <File size={40} className="text-primary mb-2" />
+                        <p className="text-white text-sm">{selectedFile.name}</p>
+                        <p className="text-textGray text-xs mt-1">
+                          {(selectedFile.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <Upload size={40} className="text-textGray mb-2" />
+                        <p className="text-white text-sm">Click to upload payment slip</p>
+                        <p className="text-textGray text-xs mt-1">
+                          JPG, PNG or PDF (Max 5MB)
+                        </p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+
+              {/* Bank Details */}
               <div className="bg-darker p-4 rounded-lg">
-                <p className="text-textGray text-sm mb-2">Payment Methods</p>
-                <div className="space-y-2">
-                  <label className="flex items-center space-x-3 text-white cursor-pointer">
-                    <input type="radio" name="payment" className="text-primary" defaultChecked />
-                    <span>Bank Transfer</span>
-                  </label>
-                  <label className="flex items-center space-x-3 text-white cursor-pointer">
-                    <input type="radio" name="payment" className="text-primary" />
-                    <span>Credit/Debit Card</span>
-                  </label>
+                <p className="text-white font-semibold mb-2">Bank Transfer Details:</p>
+                <div className="text-sm text-textGray space-y-1">
+                  <p>Bank: Commercial Bank of Ceylon</p>
+                  <p>Account Name: Graphic Corner (Pvt) Ltd</p>
+                  <p>Account Number: 1234567890</p>
+                  <p>Branch: Colombo Main Branch</p>
                 </div>
               </div>
             </div>
 
             <div className="flex space-x-3">
               <button
-                onClick={() => setShowTopUp(false)}
+                onClick={() => {
+                  setShowTopUp(false);
+                  setSelectedFile(null);
+                  setPreview(null);
+                  setAmount('');
+                  setReference('');
+                }}
                 className="flex-1 btn-secondary"
+                disabled={uploading}
               >
                 Cancel
               </button>
-              <button onClick={handleTopUp} className="flex-1 btn-primary">
-                Confirm Top Up
+              <button 
+                onClick={handleTopUp} 
+                className="flex-1 btn-primary flex items-center justify-center"
+                disabled={uploading || !selectedFile || !amount}
+              >
+                {uploading ? (
+                  <>
+                    <Loader className="animate-spin mr-2" size={18} />
+                    Uploading...
+                  </>
+                ) : (
+                  'Confirm Top Up'
+                )}
               </button>
             </div>
           </div>

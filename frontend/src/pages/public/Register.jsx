@@ -22,7 +22,7 @@ const Register = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
@@ -38,14 +38,13 @@ const Register = () => {
       return;
     }
 
-    const result = register({
+    const result = await register({
       name: formData.name,
       email: formData.email,
       password: formData.password
     });
 
     if (result.success) {
-      toast.success('Account created successfully!');
       navigate('/dashboard');
     } else {
       toast.error(result.error || 'Registration failed');

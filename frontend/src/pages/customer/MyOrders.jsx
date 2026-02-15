@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getOrdersByCustomerId } from '../../data';
 import StatusStepper from '../../components/StatusStepper';
+import PaymentUploadModal from '../../components/PaymentUploadModal';
 import { Eye, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -9,7 +9,97 @@ const MyOrders = () => {
   const { user } = useAuth();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
-  const orders = getOrdersByCustomerId(user.id);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [paymentModal, setPaymentModal] = useState({
+    isOpen: false,
+    type: null,
+    amount: 0,
+    orderId: null
+  });
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch('/api/orders', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setOrders(data.orders);
+      }
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUploadPayment = async (orderId, paymentType) => {
+    const order = orders.find(o => o._id === orderId);
+    if (!order) return;
+
+    const amount = paymentType === 'advance' ? order.advanceAmount : order.totalAmount - order.advanceAmount;
+
+    setPaymentModal({
+      isOpen: true,
+      type: paymentType,
+      amount: amount,
+      orderId: orderId
+    });
+  };
+
+  const handlePaymentSubmit = async (paymentData) => {
+    try {
+      const response = await fetch(`/api/orders/${paymentModal.orderId}/payment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          type: paymentModal.type,
+          amount: paymentModal.amount,
+          slip: paymentData.slip,
+          reference: paymentData.reference
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to submit payment');
+      }
+
+      toast.success('Payment uploaded successfully! Awaiting admin approval.');
+      
+      // Close modal and refresh orders
+      setPaymentModal({ isOpen: false, type: null, amount: 0, orderId: null });
+      fetchOrders();
+      
+      // Refresh selected order if viewing details
+      if (selectedOrder && selectedOrder._id === paymentModal.orderId) {
+        const updatedResponse = await fetch(`/api/orders/${paymentModal.orderId}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        if (updatedResponse.ok) {
+          const updatedData = await updatedResponse.json();
+          setSelectedOrder(updatedData.order);
+        }
+      }
+    } catch (error) {
+      console.error('Payment upload error:', error);
+      toast.error(error.message || 'Failed to upload payment');
+      throw error;
+    }
+  };
 
   const filteredOrders = orders.filter(order => {
     if (filterStatus === 'all') return true;
@@ -17,10 +107,6 @@ const MyOrders = () => {
     if (filterStatus === 'completed') return order.status === 'completed';
     return true;
   });
-
-  const handleUploadPayment = () => {
-    toast.success('Payment upload feature coming soon!');
-  };
 
   const handleRequestRevision = () => {
     toast.success('Revision requested successfully!');
@@ -31,8 +117,7 @@ const MyOrders = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6">{/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-2xl md:text-3xl font-bold text-white">My Orders</h2>
@@ -230,6 +315,17 @@ const MyOrders = () => {
           </div>
         </div>
       )}
+
+      {/* Payment Upload Modal */}
+      <PaymentUploadModal
+        isOpen={paymentModal.isOpen}
+        onClose={() => setPaymentModal({ isOpen: false, type: null, amount: 0, orderId: null })}
+        onSubmit={handlePaymentSubmit}
+        paymentDetails={{
+          type: paymentModal.type,
+          amount: paymentModal.amount
+        }}
+      />
     </div>
   );
 };

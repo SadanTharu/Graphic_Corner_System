@@ -50,6 +50,11 @@ export const CartProvider = ({ children }) => {
     localStorage.setItem('wallet', newBalance.toString());
   };
 
+  const setWalletBalance = (balance) => {
+    setWallet(balance);
+    localStorage.setItem('wallet', balance.toString());
+  };
+
   const deductFunds = (amount) => {
     if (wallet >= amount) {
       const newBalance = wallet - amount;
@@ -71,6 +76,7 @@ export const CartProvider = ({ children }) => {
     removeFromCart,
     clearCart,
     addFunds,
+    setWalletBalance,
     deductFunds,
     getTotalAmount,
     cartCount: cart.length

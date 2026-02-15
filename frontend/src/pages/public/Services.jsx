@@ -18,7 +18,7 @@ const Services = () => {
   };
 
   const categories = ['All', 'Graphics', 'Video', '3D', 'AI'];
-  const [selectedCategory, setSelectedCategory] = React.useState('All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
 
   const filteredServices = services.filter(
     service => selectedCategory === 'All' || service.category === selectedCategory
