@@ -1,6 +1,11 @@
 import { Check, Clock, Upload, Eye, DollarSign, ExternalLink } from 'lucide-react';
 import { statusSteps } from '../data';
 
+const ensureUrl = (url) => {
+  if (!url) return '#';
+  return /^https?:\/\//i.test(url) ? url : 'https://' + url;
+};
+
 const StatusStepper = ({ order, onUploadPayment, onRequestRevision, onApprove, orientation = 'horizontal' }) => {
   const currentStepIndex = order.currentStep - 1;
 
@@ -47,7 +52,7 @@ const StatusStepper = ({ order, onUploadPayment, onRequestRevision, onApprove, o
             {order.files.watermark.map((link, idx) => (
               <a
                 key={idx}
-                href={link}
+                href={ensureUrl(link)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-2 text-blue-400 hover:text-blue-300 text-sm"
@@ -104,7 +109,7 @@ const StatusStepper = ({ order, onUploadPayment, onRequestRevision, onApprove, o
           {order.files.final.map((link, idx) => (
             <a
               key={idx}
-              href={link}
+              href={ensureUrl(link)}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center space-x-2 text-green-400 hover:text-green-300 text-sm"

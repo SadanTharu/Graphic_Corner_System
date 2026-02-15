@@ -7,6 +7,11 @@ import PaymentUploadModal from '../../components/PaymentUploadModal';
 import { Eye, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const ensureUrl = (url) => {
+  if (!url) return '#';
+  return /^https?:\/\//i.test(url) ? url : 'https://' + url;
+};
+
 const MyOrders = () => {
   const { user } = useAuth();
   const { wallet, setWalletBalance } = useCart();
@@ -397,7 +402,7 @@ const MyOrders = () => {
                         {selectedOrder.files.watermark.map((link, idx) => (
                           <a
                             key={idx}
-                            href={link}
+                            href={ensureUrl(link)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-between p-3 bg-lightGray rounded-lg hover:bg-gray-700 transition-colors mb-2"
@@ -414,7 +419,7 @@ const MyOrders = () => {
                         {selectedOrder.files.final.map((link, idx) => (
                           <a
                             key={idx}
-                            href={link}
+                            href={ensureUrl(link)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-between p-3 bg-lightGray rounded-lg hover:bg-gray-700 transition-colors mb-2"

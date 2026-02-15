@@ -4,6 +4,11 @@ import { tasksAPI, ordersAPI } from '../../utils/api';
 import { Download, Link as LinkIcon, CheckCircle, Loader2, RefreshCw, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const ensureUrl = (url) => {
+  if (!url) return '#';
+  return /^https?:\/\//i.test(url) ? url : 'https://' + url;
+};
+
 const TeamTasks = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
@@ -284,7 +289,7 @@ const TeamTasks = () => {
                           <div className="flex items-center space-x-2">
                             <span className="text-green-500 text-xs">&#10003; Uploaded</span>
                             <button
-                              onClick={() => order.files.watermark.forEach(url => window.open(url, '_blank'))}
+                              onClick={() => order.files.watermark.forEach(url => window.open(ensureUrl(url), '_blank'))}
                               className="text-blue-500 text-xs hover:underline flex items-center space-x-1"
                             >
                               <Eye size={12} />
@@ -299,7 +304,7 @@ const TeamTasks = () => {
                           <div className="flex items-center space-x-2">
                             <span className="text-green-500 text-xs">&#10003; Uploaded</span>
                             <button
-                              onClick={() => order.files.final.forEach(url => window.open(url, '_blank'))}
+                              onClick={() => order.files.final.forEach(url => window.open(ensureUrl(url), '_blank'))}
                               className="text-blue-500 text-xs hover:underline flex items-center space-x-1"
                             >
                               <Eye size={12} />

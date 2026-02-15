@@ -300,7 +300,16 @@ router.post('/:id/files', auth, isTeam, async (req, res) => {
       order.files[fileType] = [];
     }
 
-    order.files[fileType].push(...urls);
+    // Normalize URLs — ensure they have a protocol so they open externally
+    const normalizedUrls = urls.map(url => {
+      const trimmed = url.trim();
+      if (!/^https?:\/\//i.test(trimmed)) {
+        return 'https://' + trimmed;
+      }
+      return trimmed;
+    });
+
+    order.files[fileType].push(...normalizedUrls);
     
     // Update status if watermark files uploaded
     if (fileType === 'watermark' && order.status === 'in_progress') {
