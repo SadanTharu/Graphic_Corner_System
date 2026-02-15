@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { tasksAPI, ordersAPI, uploadAPI } from '../../utils/api';
-import { Download, Upload, Link as LinkIcon, CheckCircle, Loader2, RefreshCw, Eye } from 'lucide-react';
+import { tasksAPI, ordersAPI } from '../../utils/api';
+import { Download, Link as LinkIcon, CheckCircle, Loader2, RefreshCw, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TeamTasks = () => {
@@ -10,9 +10,8 @@ const TeamTasks = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
-  const [finalLinkModal, setFinalLinkModal] = useState({ isOpen: false, orderId: null });
-  const [finalLink, setFinalLink] = useState('');
-  const watermarkInputRef = useRef({});
+  const [linkModal, setLinkModal] = useState({ isOpen: false, orderId: null, type: null });
+  const [linkValue, setLinkValue] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -49,55 +48,28 @@ const TeamTasks = () => {
     }
   };
 
-  const handleUploadWatermark = async (orderId, files) => {
-    if (!files || files.length === 0) return;
-
-    setUploading(prev => ({ ...prev, [orderId]: 'watermark' }));
-    try {
-      const uploadedUrls = [];
-      
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        const result = await uploadAPI.single(formData);
-        uploadedUrls.push(result.file.url);
-      }
-
-      await ordersAPI.uploadFiles(orderId, {
-        fileType: 'watermark',
-        urls: uploadedUrls
-      });
-
-      toast.success('Preview files uploaded successfully! Customer will be notified.');
-      fetchData();
-    } catch (error) {
-      console.error('Error uploading watermark:', error);
-      toast.error(error.message || 'Failed to upload preview files');
-    } finally {
-      setUploading(prev => ({ ...prev, [orderId]: null }));
-    }
-  };
-
-  const handleUploadFinal = async (orderId) => {
-    if (!finalLink.trim()) {
-      toast.error('Please enter a final file link');
+  const handleSubmitLink = async () => {
+    const { orderId, type } = linkModal;
+    if (!linkValue.trim()) {
+      toast.error('Please enter a link');
       return;
     }
 
-    setUploading(prev => ({ ...prev, [orderId]: 'final' }));
+    setUploading(prev => ({ ...prev, [orderId]: type }));
     try {
       await ordersAPI.uploadFiles(orderId, {
-        fileType: 'final',
-        urls: [finalLink.trim()]
+        fileType: type,
+        urls: [linkValue.trim()]
       });
 
-      toast.success('Final file link submitted! Customer will be notified.');
-      setFinalLinkModal({ isOpen: false, orderId: null });
-      setFinalLink('');
+      const label = type === 'watermark' ? 'Preview' : 'Final';
+      toast.success(`${label} link submitted! Customer will be notified.`);
+      setLinkModal({ isOpen: false, orderId: null, type: null });
+      setLinkValue('');
       fetchData();
     } catch (error) {
-      console.error('Error uploading final:', error);
-      toast.error(error.message || 'Failed to submit final file');
+      console.error(`Error submitting ${type} link:`, error);
+      toast.error(error.message || `Failed to submit ${type} link`);
     } finally {
       setUploading(prev => ({ ...prev, [orderId]: null }));
     }
@@ -268,42 +240,36 @@ const TeamTasks = () => {
                     <span>Download Raw</span>
                   </button>
 
-                  {/* Upload Watermark/Preview */}
-                  <div>
-                    <input
-                      type="file"
-                      ref={el => watermarkInputRef.current[order._id] = el}
-                      onChange={(e) => handleUploadWatermark(order._id, e.target.files)}
-                      className="hidden"
-                      accept="image/*,.pdf,.psd,.ai"
-                      multiple
-                    />
-                    <button
-                      onClick={() => watermarkInputRef.current[order._id]?.click()}
-                      disabled={uploading[order._id] === 'watermark' || order.status === 'awaiting_advance'}
-                      className={`w-full bg-blue-500/20 text-blue-500 hover:bg-blue-500/30 font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2 ${
-                        uploading[order._id] === 'watermark' || order.status === 'awaiting_advance' ? 'opacity-50 cursor-not-allowed' : ''
-                      }`}
-                    >
-                      {uploading[order._id] === 'watermark' ? (
-                        <Loader2 size={18} className="animate-spin" />
-                      ) : (
-                        <Upload size={18} />
-                      )}
-                      <span>{uploading[order._id] === 'watermark' ? 'Uploading...' : 'Upload Preview'}</span>
-                    </button>
-                  </div>
-
-                  {/* Upload Final Link */}
+                  {/* Submit Preview Link */}
                   <button
-                    onClick={() => setFinalLinkModal({ isOpen: true, orderId: order._id })}
+                    onClick={() => setLinkModal({ isOpen: true, orderId: order._id, type: 'watermark' })}
+                    disabled={uploading[order._id] === 'watermark' || order.status === 'awaiting_advance'}
+                    className={`bg-blue-500/20 text-blue-500 hover:bg-blue-500/30 font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2 ${
+                      uploading[order._id] === 'watermark' || order.status === 'awaiting_advance' ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                  >
+                    {uploading[order._id] === 'watermark' ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <LinkIcon size={18} />
+                    )}
+                    <span>{uploading[order._id] === 'watermark' ? 'Submitting...' : 'Preview Link'}</span>
+                  </button>
+
+                  {/* Submit Final Link */}
+                  <button
+                    onClick={() => setLinkModal({ isOpen: true, orderId: order._id, type: 'final' })}
                     disabled={order.status !== 'awaiting_final' || uploading[order._id] === 'final'}
                     className={`bg-green-500/20 text-green-500 hover:bg-green-500/30 font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2 ${
                       order.status !== 'awaiting_final' ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
                   >
-                    <LinkIcon size={18} />
-                    <span>Final Link</span>
+                    {uploading[order._id] === 'final' ? (
+                      <Loader2 size={18} className="animate-spin" />
+                    ) : (
+                      <LinkIcon size={18} />
+                    )}
+                    <span>{uploading[order._id] === 'final' ? 'Submitting...' : 'Final Link'}</span>
                   </button>
                 </div>
 
@@ -351,37 +317,40 @@ const TeamTasks = () => {
         )}
       </div>
 
-      {/* Final Link Modal */}
-      {finalLinkModal.isOpen && (
+      {/* Link Submit Modal (Preview or Final) */}
+      {linkModal.isOpen && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-lightGray rounded-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Submit Final File Link</h3>
+            <h3 className="text-xl font-bold text-white mb-4">
+              Submit {linkModal.type === 'watermark' ? 'Preview' : 'Final'} Link
+            </h3>
             <p className="text-textGray text-sm mb-4">
-              Enter the download link for the final file (Google Drive, Dropbox, etc.)
+              Paste the {linkModal.type === 'watermark' ? 'preview/watermark' : 'final deliverable'} link (Google Drive, Dropbox, etc.)
             </p>
             <input
               type="url"
-              value={finalLink}
-              onChange={(e) => setFinalLink(e.target.value)}
+              value={linkValue}
+              onChange={(e) => setLinkValue(e.target.value)}
               placeholder="https://drive.google.com/..."
               className="input-field mb-4"
+              autoFocus
             />
             <div className="flex space-x-3">
               <button
                 onClick={() => {
-                  setFinalLinkModal({ isOpen: false, orderId: null });
-                  setFinalLink('');
+                  setLinkModal({ isOpen: false, orderId: null, type: null });
+                  setLinkValue('');
                 }}
                 className="flex-1 btn-secondary"
               >
                 Cancel
               </button>
               <button
-                onClick={() => handleUploadFinal(finalLinkModal.orderId)}
-                disabled={!finalLink.trim() || uploading[finalLinkModal.orderId] === 'final'}
+                onClick={handleSubmitLink}
+                disabled={!linkValue.trim() || uploading[linkModal.orderId] === linkModal.type}
                 className="flex-1 btn-primary flex items-center justify-center space-x-2"
               >
-                {uploading[finalLinkModal.orderId] === 'final' ? (
+                {uploading[linkModal.orderId] === linkModal.type ? (
                   <Loader2 size={18} className="animate-spin" />
                 ) : (
                   <LinkIcon size={18} />

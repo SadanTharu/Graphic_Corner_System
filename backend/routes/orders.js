@@ -3,6 +3,7 @@ const router = express.Router();
 const { auth, isAdmin, isTeam } = require('../middleware/auth');
 const Order = require('../models/Order');
 const User = require('../models/User');
+const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
 
 // Helper function to create notification
@@ -39,7 +40,7 @@ router.get('/', auth, async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate('customer', 'name email avatar')
-      .populate('service', 'name category')
+      .populate('service', 'name category priceRange')
       .populate('assignedTo', 'name specialty avatar')
       .sort({ createdAt: -1 });
 
@@ -54,7 +55,7 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       .populate('customer', 'name email phone avatar')
-      .populate('service', 'name category description')
+      .populate('service', 'name category description priceRange')
       .populate('assignedTo', 'name specialty avatar')
       .populate('notes.user', 'name avatar');
 
@@ -131,7 +132,7 @@ router.patch('/:id/status', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied. Only admin/team can update order status.' });
     }
 
-    const { status, currentStep, assignedTo } = req.body;
+    const { status, currentStep, assignedTo, totalAmount, advanceAmount } = req.body;
     const order = await Order.findById(req.params.id)
       .populate('customer', 'name')
       .populate('service', 'name');
@@ -146,6 +147,12 @@ router.patch('/:id/status', auth, async (req, res) => {
     if (status) order.status = status;
     if (currentStep !== undefined) order.currentStep = currentStep;
     if (assignedTo !== undefined) order.assignedTo = assignedTo;
+
+    // Admin can set the actual price (from the service price range)
+    if (totalAmount !== undefined && req.user.role === 'admin') {
+      order.totalAmount = totalAmount;
+      order.advanceAmount = advanceAmount !== undefined ? advanceAmount : Math.round(totalAmount * 0.25);
+    }
 
     await order.save();
     
@@ -431,13 +438,8 @@ router.patch('/:id/payment/:paymentIndex/verify', auth, isAdmin, async (req, res
 
       // Auto-advance order status based on payment type
       if (payment.type === 'advance' && order.status === 'awaiting_advance') {
-        if (order.assignedTo) {
-          order.status = 'in_progress';
-          order.currentStep = 3;
-        } else {
-          // Keep awaiting advance but mark payment as verified
-          // Admin needs to assign team member
-        }
+        order.status = 'in_progress';
+        order.currentStep = 3;
       } else if (payment.type === 'final' && order.status === 'awaiting_final') {
         order.status = 'completed';
         order.currentStep = 6;
@@ -475,6 +477,120 @@ router.patch('/:id/payment/:paymentIndex/verify', auth, isAdmin, async (req, res
     res.json({ message: `Payment ${action}d successfully`, order: populatedOrder });
   } catch (error) {
     console.error('Error verifying payment:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Pay with wallet (Customer pays advance or final from wallet balance)
+router.post('/:id/wallet-pay', auth, async (req, res) => {
+  try {
+    const { type } = req.body; // 'advance' or 'final'
+    const order = await Order.findById(req.params.id)
+      .populate('customer', 'name')
+      .populate('service', 'name');
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    // Only the order's customer can pay
+    if (order.customer._id.toString() !== req.userId.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Determine amount
+    let amount;
+    if (type === 'advance') {
+      if (order.status !== 'awaiting_advance') {
+        return res.status(400).json({ message: 'Order is not awaiting advance payment' });
+      }
+      amount = order.advanceAmount;
+    } else if (type === 'final') {
+      if (order.status !== 'awaiting_final') {
+        return res.status(400).json({ message: 'Order is not awaiting final payment' });
+      }
+      amount = order.totalAmount - order.advanceAmount;
+    } else {
+      return res.status(400).json({ message: 'Invalid payment type. Use "advance" or "final"' });
+    }
+
+    // Check wallet balance
+    const user = await User.findById(req.userId);
+    if (user.walletBalance < amount) {
+      return res.status(400).json({ 
+        message: `Insufficient wallet balance. Need LKR ${amount.toLocaleString()}, have LKR ${user.walletBalance.toLocaleString()}.` 
+      });
+    }
+
+    // Deduct from wallet
+    user.walletBalance -= amount;
+    await user.save();
+
+    // Create wallet transaction
+    const transaction = new Transaction({
+      user: req.userId,
+      type: 'payment',
+      amount,
+      status: 'completed',
+      order: order._id,
+      paymentMethod: 'wallet',
+      description: `${type.charAt(0).toUpperCase() + type.slice(1)} payment for ${order.service.name} (Order #${order.orderNumber})`
+    });
+    await transaction.save();
+
+    // Add auto-verified payment to order
+    order.payments.push({
+      type,
+      amount,
+      date: new Date(),
+      status: 'verified', // Wallet payments are auto-verified
+      slip: null
+    });
+
+    // Auto-advance order status
+    if (type === 'advance') {
+      order.status = 'in_progress';
+      order.currentStep = 3;
+    } else if (type === 'final') {
+      order.status = 'completed';
+      order.currentStep = 6;
+    }
+
+    await order.save();
+
+    // Notify admins
+    const admins = await User.find({ role: 'admin', isActive: true });
+    for (const admin of admins) {
+      await createNotification(
+        admin._id,
+        'payment_received',
+        'Wallet Payment Received ✅',
+        `${order.customer.name} paid LKR ${amount.toLocaleString()} (${type}) via wallet for ${order.service.name}. Auto-verified.`,
+        order._id
+      );
+    }
+
+    // Notify customer
+    await createNotification(
+      order.customer._id,
+      'payment_verified',
+      'Wallet Payment Confirmed! ✅',
+      `Your ${type} payment of LKR ${amount.toLocaleString()} for ${order.service.name} has been processed from your wallet.`,
+      order._id
+    );
+
+    const populatedOrder = await Order.findById(order._id)
+      .populate('customer', 'name email avatar')
+      .populate('service', 'name category')
+      .populate('assignedTo', 'name specialty avatar');
+
+    res.json({ 
+      message: 'Wallet payment successful', 
+      order: populatedOrder,
+      newBalance: user.walletBalance
+    });
+  } catch (error) {
+    console.error('Error processing wallet payment:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

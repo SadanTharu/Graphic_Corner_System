@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { ordersAPI } from '../../utils/api';
+import { useCart } from '../../context/CartContext';
+import { ordersAPI, walletAPI } from '../../utils/api';
 import StatusStepper from '../../components/StatusStepper';
 import PaymentUploadModal from '../../components/PaymentUploadModal';
 import { Eye, X } from 'lucide-react';
@@ -8,10 +9,12 @@ import toast from 'react-hot-toast';
 
 const MyOrders = () => {
   const { user } = useAuth();
+  const { wallet, setWalletBalance } = useCart();
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [walletBalance, setLocalWalletBalance] = useState(0);
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
     type: null,
@@ -30,8 +33,14 @@ const MyOrders = () => {
 
   const fetchOrders = async () => {
     try {
-      const orders = await ordersAPI.getAll();
-      setOrders(Array.isArray(orders) ? orders : []);
+      const [ordersData, walletData] = await Promise.all([
+        ordersAPI.getAll(),
+        walletAPI.getBalance().catch(() => ({ balance: 0 }))
+      ]);
+      setOrders(Array.isArray(ordersData) ? ordersData : []);
+      const bal = walletData?.balance || walletData?.walletBalance || 0;
+      setLocalWalletBalance(bal);
+      setWalletBalance(bal);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load orders');
@@ -77,6 +86,28 @@ const MyOrders = () => {
     } catch (error) {
       console.error('Payment upload error:', error);
       toast.error(error.message || 'Failed to upload payment');
+      throw error;
+    }
+  };
+
+  const handleWalletPay = async () => {
+    try {
+      const result = await ordersAPI.walletPay(paymentModal.orderId, paymentModal.type);
+      // Update wallet balance from server response
+      if (result?.newBalance !== undefined) {
+        setLocalWalletBalance(result.newBalance);
+        setWalletBalance(result.newBalance);
+      }
+      toast.success('Payment completed from wallet!');
+      setPaymentModal({ isOpen: false, type: null, amount: 0, orderId: null });
+      fetchOrders();
+      
+      if (selectedOrder && selectedOrder._id === paymentModal.orderId) {
+        const updatedOrder = await ordersAPI.getById(paymentModal.orderId);
+        setSelectedOrder(updatedOrder);
+      }
+    } catch (error) {
+      console.error('Wallet payment error:', error);
       throw error;
     }
   };
@@ -356,31 +387,43 @@ const MyOrders = () => {
               )}
 
               {/* Files */}
-              {(selectedOrder.files?.watermark || selectedOrder.files?.finalLink) && (
+              {(selectedOrder.files?.watermark?.length > 0 || selectedOrder.files?.final?.length > 0) && (
                 <div className="bg-darker p-6 rounded-lg">
                   <h4 className="text-lg font-bold text-white mb-4">Files</h4>
                   <div className="space-y-3">
-                    {selectedOrder.files.watermark && (
-                      <a
-                        href={selectedOrder.files.watermark}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 bg-lightGray rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <span className="text-white">Preview / Watermark</span>
-                        <Eye size={18} className="text-primary" />
-                      </a>
+                    {selectedOrder.files.watermark?.length > 0 && (
+                      <div>
+                        <p className="text-textGray text-sm mb-2">Preview / Watermark</p>
+                        {selectedOrder.files.watermark.map((link, idx) => (
+                          <a
+                            key={idx}
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 bg-lightGray rounded-lg hover:bg-gray-700 transition-colors mb-2"
+                          >
+                            <span className="text-white text-sm">Preview Link {selectedOrder.files.watermark.length > 1 ? `#${idx + 1}` : ''}</span>
+                            <Eye size={18} className="text-primary" />
+                          </a>
+                        ))}
+                      </div>
                     )}
-                    {selectedOrder.files.finalLink && (
-                      <a
-                        href={selectedOrder.files.finalLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-between p-3 bg-lightGray rounded-lg hover:bg-gray-700 transition-colors"
-                      >
-                        <span className="text-white">Final Files</span>
-                        <Eye size={18} className="text-green-500" />
-                      </a>
+                    {selectedOrder.files.final?.length > 0 && (
+                      <div>
+                        <p className="text-textGray text-sm mb-2">Final Deliverables</p>
+                        {selectedOrder.files.final.map((link, idx) => (
+                          <a
+                            key={idx}
+                            href={link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-between p-3 bg-lightGray rounded-lg hover:bg-gray-700 transition-colors mb-2"
+                          >
+                            <span className="text-white text-sm">Final File {selectedOrder.files.final.length > 1 ? `#${idx + 1}` : ''}</span>
+                            <Eye size={18} className="text-green-500" />
+                          </a>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -399,6 +442,8 @@ const MyOrders = () => {
           type: paymentModal.type,
           amount: paymentModal.amount
         }}
+        walletBalance={walletBalance}
+        onWalletPay={handleWalletPay}
       />
     </div>
   );

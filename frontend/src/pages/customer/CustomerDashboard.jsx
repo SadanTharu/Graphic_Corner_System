@@ -3,16 +3,17 @@ import { Link } from 'react-router-dom';
 import { Package, Clock, CheckCircle, Wallet, TrendingUp, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { ordersAPI } from '../../utils/api';
+import { ordersAPI, walletAPI } from '../../utils/api';
 import StatusStepper from '../../components/StatusStepper';
 import PaymentUploadModal from '../../components/PaymentUploadModal';
 import toast from 'react-hot-toast';
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
-  const { wallet } = useCart();
+  const { wallet, setWalletBalance } = useCart();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [walletBalance, setLocalWalletBalance] = useState(0);
   const [paymentModal, setPaymentModal] = useState({
     isOpen: false,
     type: null,
@@ -32,8 +33,14 @@ const CustomerDashboard = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const data = await ordersAPI.getAll();
+      const [data, walletData] = await Promise.all([
+        ordersAPI.getAll(),
+        walletAPI.getBalance().catch(() => ({ balance: 0 }))
+      ]);
       setOrders(data);
+      const bal = walletData?.balance || walletData?.walletBalance || 0;
+      setLocalWalletBalance(bal);
+      setWalletBalance(bal);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load orders');
@@ -73,6 +80,23 @@ const CustomerDashboard = () => {
     } catch (error) {
       console.error('Payment upload error:', error);
       toast.error(error.message || 'Failed to upload payment');
+      throw error;
+    }
+  };
+
+  const handleWalletPay = async () => {
+    try {
+      const result = await ordersAPI.walletPay(paymentModal.orderId, paymentModal.type);
+      // Update wallet balance from server response
+      if (result?.newBalance !== undefined) {
+        setLocalWalletBalance(result.newBalance);
+        setWalletBalance(result.newBalance);
+      }
+      toast.success('Payment completed from wallet!');
+      setPaymentModal({ isOpen: false, type: null, amount: 0, orderId: null });
+      fetchOrders();
+    } catch (error) {
+      console.error('Wallet payment error:', error);
       throw error;
     }
   };
@@ -120,7 +144,7 @@ const CustomerDashboard = () => {
     },
     {
       title: 'Wallet Balance',
-      value: `LKR ${wallet.toLocaleString()}`,
+      value: `LKR ${walletBalance.toLocaleString()}`,
       icon: Wallet,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
@@ -279,6 +303,8 @@ const CustomerDashboard = () => {
           type: paymentModal.type,
           amount: paymentModal.amount
         }}
+        walletBalance={walletBalance}
+        onWalletPay={handleWalletPay}
       />
     </div>
   );

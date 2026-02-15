@@ -108,6 +108,10 @@ export const ordersAPI = {
   approveWork: (id) => apiRequest(`/api/orders/${id}/approve`, {
     method: 'POST',
   }),
+  walletPay: (id, type) => apiRequest(`/api/orders/${id}/wallet-pay`, {
+    method: 'POST',
+    body: JSON.stringify({ type }),
+  }),
 };
 
 // Tasks API

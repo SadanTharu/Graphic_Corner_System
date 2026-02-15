@@ -24,6 +24,8 @@ const AdminOrders = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [assignModal, setAssignModal] = useState({ isOpen: false, orderId: null });
+  const [approveModal, setApproveModal] = useState({ isOpen: false, order: null });
+  const [approvePrice, setApprovePrice] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -48,15 +50,39 @@ const AdminOrders = () => {
     }
   };
 
-  const handleApprove = async (orderId) => {
-    if (!confirm('Are you sure you want to approve this order?')) return;
+  const openApproveModal = (order) => {
+    setApproveModal({ isOpen: true, order });
+    setApprovePrice(order.totalAmount?.toString() || order.service?.priceRange?.min?.toString() || '');
+  };
+
+  const handleApprove = async () => {
+    const { order } = approveModal;
+    if (!order) return;
+
+    const price = parseFloat(approvePrice);
+    const min = order.service?.priceRange?.min || 0;
+    const max = order.service?.priceRange?.max || Infinity;
+
+    if (isNaN(price) || price <= 0) {
+      toast.error('Please enter a valid price');
+      return;
+    }
+    if (price < min || price > max) {
+      toast.error(`Price must be between LKR ${min.toLocaleString()} and LKR ${max.toLocaleString()}`);
+      return;
+    }
 
     try {
-      await ordersAPI.updateStatus(orderId, {
+      await ordersAPI.updateStatus(order._id, {
         status: 'awaiting_advance',
-        currentStep: 2
+        currentStep: 2,
+        totalAmount: price,
+        advanceAmount: Math.round(price * 0.25)
       });
-      toast.success('Order approved! Customer can now proceed with advance payment.');
+      toast.success('Order approved with final pricing! Customer can now pay advance.');
+      setApproveModal({ isOpen: false, order: null });
+      setApprovePrice('');
+      setSelectedOrder(null);
       fetchData();
     } catch (error) {
       console.error('Error approving order:', error);
@@ -253,7 +279,7 @@ const AdminOrders = () => {
                   {order.status === 'pending' && (
                     <>
                       <button
-                        onClick={() => handleApprove(order._id)}
+                        onClick={() => openApproveModal(order)}
                         className="bg-green-500/20 text-green-500 hover:bg-green-500/30 px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2"
                       >
                         <Check size={18} />
@@ -470,8 +496,7 @@ const AdminOrders = () => {
                   <>
                     <button
                       onClick={() => {
-                        handleApprove(selectedOrder._id);
-                        setSelectedOrder(null);
+                        openApproveModal(selectedOrder);
                       }}
                       className="bg-green-500/20 text-green-500 hover:bg-green-500/30 px-6 py-2 rounded-lg font-medium transition-all flex items-center space-x-2"
                     >
@@ -503,6 +528,82 @@ const AdminOrders = () => {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve & Set Price Modal */}
+      {approveModal.isOpen && approveModal.order && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-lightGray rounded-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-700">
+              <h3 className="text-xl font-bold text-white">Approve Order & Set Price</h3>
+              <p className="text-textGray text-sm mt-1">
+                {approveModal.order.service?.name} — Order #{approveModal.order.orderNumber}
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              {/* Price Range Info */}
+              <div className="bg-darker p-4 rounded-lg space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-textGray">Service Price Range:</span>
+                  <span className="text-white font-semibold">
+                    LKR {approveModal.order.service?.priceRange?.min?.toLocaleString() || '0'} — LKR {approveModal.order.service?.priceRange?.max?.toLocaleString() || '0'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-textGray">Customer:</span>
+                  <span className="text-white">{approveModal.order.customer?.name}</span>
+                </div>
+              </div>
+
+              {/* Price Input */}
+              <div>
+                <label className="label">Set Actual Price (LKR) *</label>
+                <input
+                  type="number"
+                  value={approvePrice}
+                  onChange={(e) => setApprovePrice(e.target.value)}
+                  min={approveModal.order.service?.priceRange?.min || 0}
+                  max={approveModal.order.service?.priceRange?.max || 999999}
+                  placeholder="Enter actual price"
+                  className="input-field text-lg"
+                />
+              </div>
+
+              {/* Calculated amounts */}
+              {approvePrice && !isNaN(parseFloat(approvePrice)) && parseFloat(approvePrice) > 0 && (
+                <div className="bg-darker p-4 rounded-lg space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-textGray">Total Amount:</span>
+                    <span className="text-primary font-bold">LKR {parseFloat(approvePrice).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-textGray">Advance (25%):</span>
+                    <span className="text-white font-semibold">LKR {Math.round(parseFloat(approvePrice) * 0.25).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-textGray">Final (75%):</span>
+                    <span className="text-white font-semibold">LKR {Math.round(parseFloat(approvePrice) * 0.75).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-700 flex space-x-3">
+              <button
+                onClick={() => { setApproveModal({ isOpen: false, order: null }); setApprovePrice(''); }}
+                className="flex-1 btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApprove}
+                className="flex-1 bg-green-500/20 text-green-500 hover:bg-green-500/30 px-6 py-2 rounded-lg font-medium transition-all flex items-center justify-center space-x-2"
+              >
+                <Check size={18} />
+                <span>Approve</span>
+              </button>
             </div>
           </div>
         </div>
