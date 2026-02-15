@@ -1,264 +1,356 @@
-# Graphic Corner System - Setup & Usage Guide
+# Graphic Corner System - Setup Guide
 
-## Overview
-This is a full-stack web application for managing graphic design services, clients, and payments with admin and client dashboards.
+## Quick Start
 
-## Project Structure
-
-### Backend (Node.js + Express + MongoDB)
-```
-backend/
-├── src/
-│   ├── controllers/        # Business logic
-│   │   ├── authController.js
-│   │   ├── clientController.js
-│   │   ├── packageController.js
-│   │   ├── contentController.js
-│   │   ├── paymentController.js
-│   │   └── serviceController.js
-│   ├── middleware/         # Auth & Admin middleware
-│   ├── models/             # MongoDB schemas
-│   ├── routes/             # API endpoints
-│   ├── app.js              # Express app setup
-│   └── server.js           # Server entry point
-├── package.json
-└── .env                    # Environment variables
+### 1. Install All Dependencies
+```bash
+npm install
+npm run install:all
 ```
 
-### Frontend (React + Vite)
+### 2. Setup MongoDB Atlas
+MongoDB Atlas is a cloud-hosted MongoDB service (free tier available).
+
+**Steps:**
+1. Go to [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a free account or sign in
+3. Create a new cluster (M0 Free tier)
+4. Click "Connect" → "Connect your application"
+5. Copy the connection string
+6. Replace `<password>` with your database password
+7. Replace `<dbname>` with `graphic_corner`
+
+**Example connection string:**
 ```
-frontend/
-├── src/
-│   ├── components/         # Reusable components
-│   │   ├── Navbar.jsx
-│   │   ├── Card.jsx
-│   │   ├── ProtectedRoute.jsx
-│   │   └── CreateCustomer.jsx
-│   ├── pages/              # Page components
-│   │   ├── AdminDashboard.jsx
-│   │   ├── AuthPages.jsx
-│   │   ├── ClientDashboard.jsx
-│   │   ├── PublicHome.jsx
-│   │   └── ServicesPage.jsx
-│   ├── styles/             # CSS stylesheets
-│   │   ├── global.css
-│   │   ├── navbar.css
-│   │   ├── auth.css
-│   │   ├── admin-dashboard.css
-│   │   ├── client-dashboard.css
-│   │   └── forms.css
-│   ├── api.js              # API client configuration
-│   ├── App.jsx             # Main app component
-│   └── main.jsx            # Entry point
-└── package.json
+mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/graphic_corner?retryWrites=true&w=majority
 ```
 
-## Environment Setup
+### 3. Setup Cloudinary
+Cloudinary provides cloud-based image and video management (free tier available).
 
-### Backend (.env)
-Create a `.env` file in the `backend` directory:
+**Steps:**
+1. Go to [cloudinary.com](https://cloudinary.com) and sign up
+2. After login, go to Dashboard
+3. Copy your credentials:
+   - Cloud Name
+   - API Key
+   - API Secret
 
-```properties
-PORT=4000
-MONGO_URI=mongodb+srv://your_user:your_password@your_cluster.mongodb.net/?appName=Cluster0
-JWT_SECRET=your_jwt_secret_here
-ADMIN_PASSWORD=MySecretAdminPassword123
-```
-
-### Frontend (already configured)
-The frontend API client is configured to use `http://localhost:4000/api`
-
-## Getting Started
-
-### 1. Create Admin Account (First Time Only)
-
-Send a POST request to create the admin account:
-
-**Using curl (PowerShell):**
-```powershell
-$headers = @{"Content-Type" = "application/json"}
-$body = '{"adminKey": "MySecretAdminPassword123"}'
-Invoke-WebRequest -Uri "http://localhost:4000/api/auth/seed-admin" -Method POST -Headers $headers -Body $body
-```
-
-**Using Postman:**
-- URL: `http://localhost:4000/api/auth/seed-admin`
-- Method: POST
-- Headers: `Content-Type: application/json`
-- Body: `{"adminKey": "MySecretAdminPassword123"}`
-
-### 2. Login as Admin
-
-Use these credentials to login:
-- **Email:** `admin@local`
-- **Password:** `MySecretAdminPassword123` (or your `ADMIN_PASSWORD` from .env)
-
-### 3. Create Customers
-
-Once logged in as admin:
-1. Go to Admin Dashboard
-2. Click "+ Create Customer"
-3. Fill in the customer details:
-   - **Client ID:** Unique identifier (required)
-   - **Name:** Customer name
-   - **Email:** Customer email (required, must be unique)
-   - **Password:** Secure password (required)
-   - **Contact:** Phone number or contact info
-4. Click "Create Customer"
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/login` - User login
-- `POST /api/auth/seed-admin` - Create admin (one-time)
-
-### Clients (Admin Only)
-- `GET /api/clients` - List all clients
-- `POST /api/clients` - Create new client
-- `PUT /api/clients/:id` - Update client
-- `DELETE /api/clients/:id` - Delete client
-- `GET /api/clients/me` - Get current user profile
-
-### Packages (Admin Management)
-- `GET /api/packages` - List all packages
-- `POST /api/packages` - Create package
-- `PUT /api/packages/:id` - Update package
-- `DELETE /api/packages/:id` - Delete package
-- `GET /api/packages/client/:clientId` - Get packages for client
-
-### Services (Public)
-- `GET /api/services` - List services
-- `POST /api/services` - Create service (admin)
-- `PUT /api/services/:id` - Update service (admin)
-- `DELETE /api/services/:id` - Delete service (admin)
-
-### Contents & Payments
-Similar endpoints available for:
-- `/api/contents` - Manage content
-- `/api/payments` - Manage payments
-
-## Features
-
-### Admin Features
-✅ Create, read, update, delete customers
-✅ Manage services, packages, and content
-✅ Track payments
-✅ View all customers in a grid view
-✅ Delete customers
-
-### Client Features
-✅ View own profile
-✅ View assigned packages
-✅ View own payments
-✅ Access services
-
-### Authentication
-✅ JWT token-based authentication
-✅ Role-based access control (admin/client)
-✅ Secure password hashing (bcryptjs)
-✅ 30-day token expiration
-
-## UI Features
-
-### Styling
-- Modern gradient design (purple/indigo theme)
-- Responsive layout for mobile/tablet/desktop
-- Smooth transitions and animations
-- Professional card-based design
-
-### Components
-- Beautiful login form with error handling
-- Admin dashboard with customer management
-- Customer creation form with validation
-- Navbar with active link indicators
-- Logout functionality
-
-## Backend Architecture
-
-The backend follows MVC pattern:
-
-**Controllers** - Handle business logic and API responses
-**Routes** - Define API endpoints and apply middleware
-**Models** - MongoDB schemas with validation
-**Middleware** - Authentication and authorization checks
-
-Benefits:
-- Cleaner code organization
-- Easier to test
-- Better separation of concerns
-- Scalable structure
-
-## Running the Application
-
-### Start Backend
+### 4. Configure Backend Environment
 ```bash
 cd backend
-npm install
-npm start
+cp .env.example .env
+# Edit .env with your settings
 ```
 
-### Start Frontend
+**Required Environment Variables:**
+```env
+NODE_ENV=development
+PORT=5000
+
+# MongoDB Atlas Connection String
+MONGODB_URI=mongodb+srv://username:password@cluster0.xxxxx.mongodb.net/graphic_corner?retryWrites=true&w=majority
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRE=30d
+
+# Frontend URL
+FRONTEND_URL=http://localhost:5173
+
+# Cloudinary Credentials (from Cloudinary Dashboard)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# Cloudinary Settings
+CLOUDINARY_FOLDER=graphic_corner
+MAX_FILE_SIZE=52428800
+```
+
+### 5. Seed Database
 ```bash
-cd frontend
-npm install
+# From project root
+npm run seed
+```
+
+This creates:
+- 1 Admin user
+- 2 Team members
+- 2 Customer users
+- 6 Sample services
+- 2 Sample orders
+- 3 Sample tasks
+
+### 6. Start Development Servers
+```bash
+# From project root - runs both frontend and backend
 npm run dev
 ```
 
-Visit `http://localhost:5173` (frontend) and the backend runs on `http://localhost:4000`
+**OR run separately:**
+```bash
+# Terminal 1 - Backend
+npm run dev:backend
 
-## Default Credentials
+# Terminal 2 - Frontend  
+npm run dev:frontend
+```
 
-After running the seed-admin endpoint:
+## Access Points
 
-| Field | Value |
-|-------|-------|
-| Email | admin@local |
-| Password | MySecretAdminPassword123 |
-| Role | admin |
+- **Frontend:** http://localhost:5173
+- **Backend API:** http://localhost:5000
+- **API Health Check:** http://localhost:5000/api/health
 
-## Troubleshooting
+## Demo Accounts
 
-### "Cannot POST /auth/seed-admin"
-- Make sure you're using the full path: `/api/auth/seed-admin`
-- Check that the backend server is running on port 4000
+### Admin Dashboard
+```
+Email: admin@graphiccorner.lk
+Password: admin123
+Access: Full system control, analytics, team management
+```
 
-### "Invalid credentials" on login
-- Verify admin account exists by running seed-admin endpoint
-- Check email and password match exactly
-- Ensure `.env` variables are set correctly
+### Team Member Dashboard
+```
+Email: nimal@graphiccorner.lk
+Password: team123
+Access: Task management, file uploads, order updates
+```
 
-### CORS errors
-- Backend already has CORS enabled in `app.js`
-- Ensure frontend is making requests to `http://localhost:4000/api`
+### Customer Dashboard
+```
+Email: kasun@example.com
+Password: customer123
+Access: Create orders, track progress, wallet management
+```
 
-## File Reference
+## Testing Backend API
 
-### Controllers Added
-- `authController.js` - Login and admin seeding
-- `clientController.js` - Customer CRUD operations
-- `packageController.js` - Package management
-- `contentController.js` - Content management
-- `paymentController.js` - Payment tracking
-- `serviceController.js` - Service management
+### Using cURL
 
-### Components Added
-- `CreateCustomer.jsx` - Customer creation form
+**Login:**
+```bash
+curl -X POST http://localhost:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@graphiccorner.lk","password":"admin123"}'
+```
 
-### Styles Added
-- `global.css` - Global styles and utilities
-- `navbar.css` - Navigation bar styling
-- `auth.css` - Authentication pages styling
-- `admin-dashboard.css` - Admin dashboard styling
-- `client-dashboard.css` - Client dashboard styling
-- `forms.css` - Form and message styling
+**Get Services:**
+```bash
+curl http://localhost:5000/api/services
+```
 
-## Future Enhancements
+**Get Orders (with auth):**
+```bash
+curl http://localhost:5000/api/orders \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
 
-- [ ] Profile editing for clients
-- [ ] File upload for content
-- [ ] Email notifications
-- [ ] Payment processing integration
-- [ ] Advanced reporting and analytics
-- [ ] Two-factor authentication
-- [ ] Password reset functionality
-- [ ] Search and filter functionality
+### Using Postman
+
+1. Import collection (create one from API docs)
+2. Set base URL: `http://localhost:5000`
+3. For protected routes, add header:
+   - Key: `Authorization`
+   - Value: `Bearer YOUR_JWT_TOKEN`
+
+## Project Structure Verification
+
+After setup, your structure should look like:
+
+```
+Graphic_Corner_System/
+├── frontend/
+│   ├── src/
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
+├── backend/
+│   ├── models/
+│   ├── routes/
+│   ├── middleware/
+│   ├── scripts/
+│   ├── uploads/
+│   ├── server.js
+│   ├── .env
+│   └── package.json
+├── package.json
+└── README.md
+```
+
+## Common Issues & Solutions
+
+### Issue: MongoDB Atlas Connection Failed
+**Solution:**
+- Verify connection string format is correct
+- Check username and password (no special characters unescaped)
+- Whitelist your IP address in MongoDB Atlas:
+  - Go to Network Access → Add IP Address → Allow Access from Anywhere (0.0.0.0/0)
+- Ensure database name is `graphic_corner`
+
+### Issue: Cloudinary Upload Failed
+**Solution:**
+- Verify all three Cloudinary credentials are correct
+- Check Cloud Name, API Key, and API Secret
+- Ensure you're using the correct account
+- Check Cloudinary dashboard for quota limits
+
+### Issue: Port Already in Use
+**Solution:**
+```bash
+# Windows - Kill process on port 5000
+netstat -ano | findstr :5000
+taskkill /PID <PID> /F
+
+# Change port in backend/.env
+PORT=5001
+```
+
+### Issue: CORS Errors
+**Solution:**
+- Verify `FRONTEND_URL` in `backend/.env` matches frontend URL
+- Check Vite proxy in `frontend/vite.config.js`
+
+### Issue: JWT Token Invalid
+**Solution:**
+- Clear localStorage in browser
+- Re-login to get fresh token
+- Verify `JWT_SECRET` in `backend/.env`
+
+### Issue: Modules Not Found
+**Solution:**
+```bash
+# Reinstall dependencies
+cd frontend && npm install
+cd ../backend && npm install
+```
+
+## Development Workflow
+
+### 1. Feature Development
+```bash
+# Create feature branch
+git checkout -b feature/your-feature
+
+# Make changes, test
+
+# Commit changes
+git add .
+git commit -m "Add: your feature"
+```
+
+### 2. Backend Changes
+```bash
+cd backend
+
+# Make model/route changes
+# Test with Postman or cURL
+
+# Restart backend
+npm run dev
+```
+
+### 3. Frontend Changes
+```bash
+cd frontend
+
+# Make component changes
+# Hot reload will update automatically
+
+# Build for production
+npm run build
+```
+
+### 4. Database Reset
+```bash
+# Drop database and reseed
+npm run seed
+```
+
+## Production Deployment
+
+### Frontend (Vercel/Netlify)
+```bash
+cd frontend
+npm run build
+# Deploy dist/ folder
+```
+
+### Backend (Heroku/Railway/Render)
+```bash
+# Set environment variables on platform
+# Deploy backend/ folder
+```
+
+### Database (MongoDB Atlas)
+```bash
+# Update MONGODB_URI with Atlas connection string
+# Ensure IP whitelist is configured
+```Atlas connection string | `mongodb+srv://user:pass@cluster.mongodb.net/graphic_corner` |
+| `JWT_SECRET` | Secret key for JWT | `your-secret-key` |
+| `JWT_EXPIRE` | Token expiration time | `30d` |
+| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:5173` |
+| `CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name | From Cloudinary dashboard |
+| `CLOUDINARY_API_KEY` | Cloudinary API key | From Cloudinary dashboard |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret | From Cloudinary dashboard |
+| `CLOUDINARY_FOLDER` | Upload folder name | `graphic_corner` |
+| `MAX_FILE_SIZE` | Max upload size in bytes | `52428800` (50MB)
+### Backend (.env)
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NODE_ENV` | Environment mode | `development` or `production` |
+| `PORT` | Backend server port | `5000` |
+| `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/graphic_corner` |
+| `JWT_SECRET` | Secret key for JWT | `your-secret-key` |
+| `JWT_EXPIRE` | Token expiration time | `30d` |
+| `FRONTEND_URL` | Frontend URL for CORS | `http://localhost:5173` |
+
+## Scripts Reference
+
+### Root Package Scripts
+| Script | Description |
+|--------|-------------|
+| `npm install` | Install root dependencies |
+| `npm run install:all` | Install all dependencies (frontend + backend) |
+| `npm run dev` | Run both servers concurrently |
+| `npm run dev:frontend` | Run frontend only |
+| `npm run dev:backend` | Run backend only |
+| `npm run build:frontend` | Build frontend for production |
+| `npm run seed` | Seed database with sample data |
+
+### Backend Scripts
+| Script | Description |
+|--------|-------------|
+| `npm start` | Start production server |
+| `npm run dev` | Start development server with nodemon |
+| `npm run seed` | Seed database |
+
+### Frontend Scripts
+| Script | Description |
+|--------|-------------|
+| `npm run dev` | Start Vite dev server |
+| `npm run build` | Build for production |
+| `npm run preview` | Preview production build |
+
+## Next Steps
+
+1. ✅ Complete setup above
+2. 🔐 Test login with demo accounts
+3. 🎨 Explore admin dashboard features
+4. 📦 Create test orders as customer
+5. 👥 Assign tasks as admin
+6. 🔧 Start customizing for your needs
+
+## Support
+
+For issues or questions:
+- Check [README.md](README.md) for detailed documentation
+- Review API endpoints in README
+- Check console logs for errors
+- Verify environment variables are set correctly
+
+---
+
+**Happy Coding! 🚀**

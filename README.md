@@ -1,382 +1,369 @@
-# 🎨 Graphic Corner System - Complete Membership & Packages System
+# Graphic Corner - Creative Agency Management System
 
-## ✨ What's New in v2.0
+A full-stack modern, responsive application for managing creative services including graphics design, video editing, 3D rendering, and AI services.
 
-Your system now supports **two types of customers with flexible pricing models:**
+## 🎨 Features
 
-### 💳 Monthly Subscription Customers
-- Recurring monthly packages
-- Fixed task quota per month  
-- Standard membership tiers (Basic, Professional, Enterprise)
-- Automatic renewal management
+### Public Features
+- **Landing Page** with hero section, features, packages, and testimonials
+- **Services Catalog** with category filtering
+- **Authentication** (Login/Register with JWT)
 
-### 📦 Task-Based Customers
-- Custom project-specific packages
-- Unlimited packages per customer
-- Track progress and payments per package
-- Perfect for one-time projects
-
----
-
-## 🚀 Quick Start (Choose Your Path)
-
-### I Want to Create Memberships
-```
-1. Login as admin
-2. Admin Dashboard → "💳 Memberships" tab
-3. Click "+ New Package"
-4. Enter name, price, task limit, features
-5. Click "Create Membership"
-✅ Done!
-```
-
-### I Want to Create a Custom Package
-```
-1. Admin Dashboard → "👥 Customers" tab
-2. Create a task-based customer
-3. Go to "📦 Custom Packages" tab
-4. Click "+ New Package"
-5. Select customer, enter details
-6. Click "Create Package"
-✅ Done!
-```
-
-### I Want to Track Progress
-```
-1. Admin Dashboard → "📦 Custom Packages" tab
-2. Find the package in table
-3. Update "Progress" column as tasks complete
-4. Progress bar updates automatically
-5. Auto-marks as "completed" when done
-✅ Done!
-```
-
-### I Want Full Documentation
-→ See `DOCUMENTATION_INDEX.md`
-
----
-
-## 📊 System at a Glance
-
-### Database
-- **3 Models:** Client (enhanced), Membership, CustomPackage
-- **3 Collections:** clients, memberships, custompackages
-- **Relationships:** Proper ObjectId references with populate
-
-### API
-- **7 New Endpoints:** Full CRUD for memberships and packages
-- **3 Enhanced Routes:** Client management improved
-- **Security:** JWT auth + admin middleware
-
-### Frontend
-- **2 New Components:** MembershipManager, CustomPackageManager
-- **2 New Admin Tabs:** 💳 Memberships, 📦 Custom Packages
-- **1 Enhanced:** AdminDashboard with new features
+### Customer Dashboard
+- **Order Management** with real-time status tracking
+- **StatusStepper Component** - Visual progress tracker for orders
+- **Service Request** - Browse and select services/packages
+- **Wallet Management** - Top-up balance and view transactions
+- **Order History** with detailed views
 
 ### Admin Dashboard
-- 📊 Overview - Stats + Charts
-- 👥 Customers - CRUD + type management
-- 💳 Memberships - Create standard packages
-- 📦 Packages - Create custom deals
-- 📋 Tasks - Manage tasks
-- 💰 Payments - Track payments
+- **Overview** - Business metrics and recent orders
+- **Service Management** - CRUD operations for services
+- **Financial Dashboard** with Recharts:
+  - Bar Chart: Target vs Actual Sales
+  - Pie Chart: Revenue by Service Type
+  - Transaction History
+- **Team Management** with Kanban Board:
+  - Drag & Drop task organization
+  - Task assignment to team members
+  - Team member profiles
 
----
+### Team Member Dashboard
+- **Task Management** - View assigned tasks and orders
+- **File Management**:
+  - Download raw footage
+  - Upload watermark previews
+  - Upload final files/links
 
-## 🎯 Key Features
+## 🚀 Tech Stack
 
-### Memberships (Subscription Model)
-✅ Create unlimited membership packages
-✅ Define pricing and billing cycles
-✅ Set task limits and revision limits
-✅ Choose support level (basic/priority/vip)
-✅ Custom icon and branding color
-✅ Feature lists per package
-✅ Soft delete (keeps data)
+### Frontend
+- **Framework:** React 18 with Vite
+- **Styling:** Tailwind CSS (Dark Mode Theme)
+- **Icons:** Lucide React
+- **Routing:** React Router DOM v6
+- **State Management:** React Context API
+- **Charts:** Recharts
+- **Notifications:** React Hot Toast
 
-### Custom Packages (Project Model)
-✅ Create unlimited packages
-✅ One package = one project
-✅ Track task progress with visual bar
-✅ Track payment status (pending/partial/paid)
-✅ Auto-mark complete when tasks done
-✅ Auto-update payment status
-✅ Supports multiple packages per customer
+### Backend
+- **Runtime:** Node.js
+- **Framework:** Express.js
+- **Database:** MongoDB Atlas (Cloud Database)
+- **Authentication:** JWT (JSON Web Tokens)
+- **Password Hashing:** bcryptjs
+- **File Storage:** Cloudinary (Cloud Storage)
+- **File Upload:** Multer + Cloudinary SDK
+- **Validation:** Express Validator
+- **Logging:** Morgan
 
-### Analytics
-✅ Total customers by type
-✅ Active subscriptions count
-✅ Revenue tracking
-✅ Task completion rates
-✅ Payment status overview
-✅ Real-time charts and graphs
+## 🎨 Design System
 
----
+- **Primary Color:** `#E63946` (Red)
+- **Background:** `#1A1A1A` (Dark Grey)
+- **Secondary BG:** `#0F0F0F` (Darker)
+- **Text:** `#FFFFFF` (White) / `#B0B0B0` (Grey)
 
-## 📁 Files Created/Modified
+## 📁 Project Structure
 
-### New Backend Files
-- `backend/src/models/Membership.js`
-- `backend/src/models/CustomPackage.js`
-- `backend/src/controllers/membershipController.js`
-- `backend/src/controllers/customPackageController.js`
-- `backend/src/routes/memberships.js`
-- `backend/src/routes/customPackages.js`
+```
+Graphic_Corner_System/
+├── frontend/                 # React Frontend
+│   ├── src/
+│   │   ├── components/      # Reusable components
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── Sidebar.jsx
+│   │   │   ├── DashboardNavbar.jsx
+│   │   │   ├── StatusStepper.jsx
+│   │   │   └── ProtectedRoute.jsx
+│   │   ├── context/         # React Context providers
+│   │   │   ├── AuthContext.jsx
+│   │   │   └── CartContext.jsx
+│   │   ├── layouts/         # Layout components
+│   │   │   ├── PublicLayout.jsx
+│   │   │   └── DashboardLayout.jsx
+│   │   ├── pages/
+│   │   │   ├── public/      # Public pages
+│   │   │   ├── customer/    # Customer dashboard
+│   │   │   ├── admin/       # Admin dashboard
+│   │   │   └── team/        # Team member pages
+│   │   ├── data.js          # Mock data (for demo)
+│   │   ├── App.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   └── package.json
+│
+├── backend/                 # Express Backend API
+│   ├── models/             # Mongoose models
+│   │   ├── User.js
+│   │   ├── Service.js
+│   │   ├── Order.js
+│   │   ├── Task.js
+│   │   └── Transaction.js
+│   ├── routes/             # API routes
+│   │   ├── auth.js
+│   │   ├── users.js
+│   │   ├── services.js
+│   │   ├── orders.js
+│   │   ├── tasks.js
+│   │   ├── wallet.js
+│   │   └── upload.js
+│   ├── middleware/         # Custom middleware
+│   │   └── auth.js
+│   ├── scripts/            # Utility scripts
+│   │   └── seed.js
+│   ├── uploads/            # File upload directory
+│   ├── server.js           # Entry point
+│   ├── .env.example        # Environment variables template
+│   └── package.json
+│
+├── package.json            # Root package.json for scripts
+└── README.md
+```
 
-### Enhanced Backend Files
-- `backend/src/models/Client.js` - Added customerType field
-- `backend/src/controllers/clientController.js` - New methods
-- `backend/src/routes/clients.js` - New endpoints
-- `backend/src/app.js` - Route registration
+## 🛠️ Installation & Setup
 
-### New Frontend Files
-- `frontend/src/components/MembershipManager.jsx`
-- `frontend/src/components/CustomPackageManager.jsx`
-- `frontend/src/styles/membership-manager.css`
+### Prerequisites
+- Node.js (v16 or higher)
+- MongoDB Atlas account (free tier available)
+- Cloudinary account (free tier available)
+- npm or yarn
 
-### Enhanced Frontend Files
-- `frontend/src/pages/AdminDashboard.jsx` - New tabs
-- `frontend/src/main.jsx` - CSS import
+### 1. Clone the Repository
+```bash
+git clone <repository-url>
+cd Graphic_Corner_System
+```
 
-### Documentation Files
-- `MEMBERSHIPS_GUIDE.md` - Complete guide
-- `SETUP_MEMBERSHIPS.md` - Quick start
-- `IMPLEMENTATION_SUMMARY.md` - What's built
-- `ARCHITECTURE_DIAGRAM.md` - Visual diagrams
-- `VERIFICATION_CHECKLIST.md` - Testing checklist
-- `DOCUMENTATION_INDEX.md` - Doc reference
-- `README.md` - This file
+### 2. Install Dependencies
+```bash
+# Install root dependencies
+npm install
 
----
+# Install frontend and backend dependencies
+npm run install:all
+```
+
+### 3. Configure Environment Variables
+
+#### Backend Configuration
+```bash
+cd backend
+cp .env.example .env
+```
+
+Edit `backend/.env` with your configuration:
+```env
+NODE_ENV=development
+PORT=5000
+
+# MongoDB Atlas - Get from https://cloud.mongodb.com
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/graphic_corner?retryWrites=true&w=majority
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRE=30d
+
+# Frontend URL
+FRONTEND_URL=http://localhost:5173
+
+# Cloudinary - Get from https://cloudinary.com/console
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_FOLDER=graphic_corner
+MAX_FILE_SIZE=52428800
+```
+
+**Setup Guides:**
+- MongoDB Atlas: See [SETUP_GUIDE.md](SETUP_GUIDE.md)
+- Cloudinary: See [CLOUDINARY_SETUP.md](CLOUDINARY_SETUP.md)
+ & Cloud Storage
+
+**MongoDB Atlas:**
+1. Create account at [mongodb.com/cloud/atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a free M0 cluster
+3. Get connection string and add to `.env`
+
+**Cloudinary:**
+1. Create account at [cloudinary.com](https://cloudinary.com)
+2. Get credentials from dashboard
+3. Add to `.env`
+
+For detailed instructions, see [CLOUDINARY_SETUP.md](CLOUDINARY_SETUP.md)
+6
+### 5. Seed the Database
+
+Make sure MongoDB Atlas is configured
+Make sure MongoDB is running, then seed the database:
+```bash
+npm run seed
+```
+
+This will create:
+- Admin, Team members, and Customer accounts
+- Sample services
+- Sample orders and tasks
+
+### 5. Start Development Servers
+
+#### Option 1: Run Both Servers Concurrently (Recommended)
+```bash
+npm run dev
+```
+
+#### Option 2: Run Separately
+```bash
+# Terminal 1 - Backend
+npm run dev:backend
+
+# Terminal 2 - Frontend
+npm run dev:frontend
+```
+
+Frontend: `http://localhost:5173`
+Backend API: `http://localhost:5000`
+
+## 👥 Demo Credentials
+
+### Admin Account
+- **Email:** `admin@graphiccorner.lk`
+- **Password:** `admin123`
+
+### Team Member Account
+- **Email:** `nimal@graphiccorner.lk`
+- **Password:** `team123`
+
+### Customer Account
+- **Email:** `kasun@example.com`
+- **Password:** `customer123`
 
 ## 🔌 API Endpoints
 
-### Memberships (New)
+### Authentication
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - Login user
+- `GET /api/auth/me` - Get current user
+
+### Users
+- `GET /api/users` - Get all users (Admin)
+- `GET /api/users/team` - Get team members
+- `GET /api/users/:id` - Get user by ID
+- `PUT /api/users/:id` - Update user
+- `DELETE /api/users/:id` - Deactivate user (Admin)
+
+### Services
+- `GET /api/services` - Get all services
+- `GET /api/services/:id` - Get service by ID
+- `POST /api/services` - Create service (Admin)
+- `PUT /api/services/:id` - Update service (Admin)
+- `DELETE /api/services/:id` - Delete service (Admin)
+
+### Orders
+- `GET /api/orders` - Get all orders (filtered by role)
+- `GET /api/orders/:id` - Get order by ID
+- `POST /api/orders` - Create new order
+- `PATCH /api/orders/:id/status` - Update order status
+- `POST /api/orders/:id/payment` - Upload payment
+- `POST /api/orders/:id/files` - Upload files (Team)
+- `POST /api/orders/:id/notes` - Add note/comment
+- `POST /api/orders/:id/revision` - Request revision
+
+### Tasks
+- `GET /api/tasks` - Get all tasks (filtered by role)
+- `GET /api/tasks/:id` - Get task by ID
+- `POST /api/tasks` - Create task (Admin)
+- `PUT /api/tasks/:id` - Update task
+- `DELETE /api/tasks/:id` - Delete task (Admin)
+
+### Wallet
+- `GET /api/wallet/balance` - Get wallet balance
+- `GET /api/wallet/transactions` - Get transactions
+- `POST /api/wallet/topup` - Top up wallet
+- `POST /api/wallet/pay` - Make payment from wallet
+
+### Upload
+- `POST /api/upload/single` - Upload single file
+- `POST /api/upload/multiple` - Upload multiple files
+
+## 🎯 Key Components
+
+### StatusStepper Component
+Visual progress tracker showing 6 steps:
+1. Pending Approval
+2. Advance Payment (25%)
+3. Work in Progress
+4. Review Watermark
+5. Final Payment
+6. Completed
+
+### Service Cards
+Displays services with category badges, price ranges, delivery time, and interactive actions.
+
+### Financial Charts
+- **Bar Chart:** Monthly target vs actual sales comparison
+- **Pie Chart:** Revenue breakdown by service category
+
+## 🎨 Services & Packages
+
+### Services Categories
+- **Graphics:** Logo Design, Social Media Posts, Flyers
+- **Video:** Short Reels, YouTube Editing, Thumbnails
+- **3D:** Product Rendering, Animation
+- **AI:** Image Generation, Content Writing
+
+## 📱 Responsive Design
+
+- Mobile-first approach
+- Collapsible sidebar on mobile
+- Responsive grid layouts
+- Touch-friendly controls
+- Optimized for all screen sizes
+
+## 🔐 Security
+
+- Password hashing with bcryptjs
+- JWT-based authentication
+- Role-based access control (RBAC)
+- Protected API routes
+- Input validation with express-validator
+
+## 📦 Build for Production
+
+### Build Frontend
+```bash
+cd frontend
+npm run build
 ```
-GET    /api/memberships          - List all (public)
-GET    /api/memberships/:id      - Get one (public)
-POST   /api/memberships          - Create (admin)
-PUT    /api/memberships/:id      - Update (admin)
-DELETE /api/memberships/:id      - Delete (admin)
+
+### Start Backend
+```bash
+cd backend
+npm start
 ```
 
-### Custom Packages (New)
-```
-GET    /api/custom-packages               - List all (admin)
-GET    /api/custom-packages/client/:id    - Client's packages
-POST   /api/custom-packages               - Create (admin)
-PUT    /api/custom-packages/:id           - Update (admin)
-PUT    /api/custom-packages/:id/progress  - Update tasks (admin)
-PUT    /api/custom-packages/:id/payment   - Update payment (admin)
-DELETE /api/custom-packages/:id           - Delete (admin)
-```
+## 🚧 Future Enhancements
 
-### Clients (Enhanced)
-```
-PUT    /api/clients/:id/membership        - Assign membership (admin)
-GET    /api/clients/:id                   - Get detail with membership
-```
+- [ ] Real-time notifications with Socket.io
+- [ ] Payment gateway integration (Stripe/PayPal)
+- [ ] Email notifications
+- [ ] Advanced analytics dashboard
+- [ ] Chat system between customers and team
+- [ ] Mobile app (React Native)
+- [ ] File preview system
+- [ ] Automated invoicing
 
----
+## 📄 License
 
-## 💼 Workflows
+This project is created for demonstration purposes.
 
-### Monthly Subscription Setup
-1. Admin creates membership package (e.g., "Professional")
-2. Admin creates customer, selects "monthly_subscription"
-3. Admin assigns the Professional membership
-4. Subscription dates auto-set (30 days from today)
-5. Customer sees membership details and task quota
-6. Monthly quota resets automatically
+## 👨‍💻 Development
 
-### Task-Based Project Setup
-1. Admin creates customer, selects "task_based"
-2. Admin creates custom package for customer
-3. Defines tasks (e.g., 5 design tasks)
-4. As tasks complete, updates progress
-5. When amountPaid = price, marks as paid
-6. When tasks = total, marks as completed
-
-### Customer Type Conversion
-1. Can switch customer from task_based → monthly_subscription
-2. Can assign/change membership anytime
-3. Custom packages remain but aren't active
-4. Reverse conversion also possible
+Built with ❤️ using React, Express, MongoDB, and modern web technologies.
 
 ---
 
-## 📊 Data Models
-
-### Membership
-```javascript
-{
-  name, description, price, billingCycle,
-  taskLimit, revisionLimit, deliveryDays,
-  supportLevel, features, icon, color
-}
-```
-
-### CustomPackage
-```javascript
-{
-  clientId, packageName, description, price,
-  taskCount, tasksCompleted, revisionLimit,
-  deliveryDays, status, paymentStatus,
-  amountPaid, features, notes
-}
-```
-
-### Client (Enhanced)
-```javascript
-{
-  // ... existing fields ...
-  customerType,           // 'monthly_subscription' or 'task_based'
-  membershipId,          // Link to Membership
-  subscriptionStartDate,
-  subscriptionEndDate,
-  tasksCompleted,
-  totalSpent
-}
-```
-
----
-
-## 🎓 Documentation Guide
-
-| Document | Purpose | Read Time |
-|----------|---------|-----------|
-| `SETUP_MEMBERSHIPS.md` | Quick start with examples | 5-10 min |
-| `MEMBERSHIPS_GUIDE.md` | Complete system reference | 30-45 min |
-| `ARCHITECTURE_DIAGRAM.md` | Visual system overview | 10-15 min |
-| `IMPLEMENTATION_SUMMARY.md` | What was built | 15-20 min |
-| `VERIFICATION_CHECKLIST.md` | Testing procedures | 5-10 min |
-| `PROJECT_GUIDE.md` | Full project overview | 45-60 min |
-| `DOCUMENTATION_INDEX.md` | Doc index & learning paths | 5 min |
-
----
-
-## ✅ What Works
-
-- ✅ Create memberships with full CRUD
-- ✅ Create custom packages with full CRUD
-- ✅ Assign memberships to customers
-- ✅ Track task progress with progress bar
-- ✅ Track payment status (auto-updates)
-- ✅ Auto-mark complete when appropriate
-- ✅ View analytics and statistics
-- ✅ Admin dashboard with 6 tabs
-- ✅ Responsive design (mobile/tablet/desktop)
-- ✅ Proper error handling
-- ✅ User-friendly messages
-- ✅ Professional UI/UX
-
----
-
-## 🚀 Deployment
-
-### Backend Requirements
-- Node.js v14+
-- MongoDB (cloud or local)
-- Environment variables configured
-
-### Frontend Requirements
-- npm or yarn
-- Modern browser
-- React 18 compatible
-
-### Deploy Steps
-1. Backend: Push to hosting (Heroku, Railway, Render)
-2. Frontend: Push to static host (Vercel, Netlify)
-3. Configure environment variables
-4. Test all APIs from production URLs
-
----
-
-## 🆘 Common Questions
-
-**Q: How do I create my first membership?**
-A: See `SETUP_MEMBERSHIPS.md` Step 1
-
-**Q: What's the difference between the two customer types?**
-A: Monthly Subscription = recurring monthly; Task-Based = project-specific
-
-**Q: Can a customer have both types?**
-A: No, but can convert between types
-
-**Q: How does payment tracking work?**
-A: Update amountPaid field → status auto-updates to pending/partial/paid
-
-**Q: Can I have multiple packages per customer?**
-A: Yes, only for task-based customers
-
-**Q: What happens when tasks complete?**
-A: Package auto-marks as "completed" when tasksCompleted >= taskCount
-
-**Q: Is my data secure?**
-A: Yes - JWT authentication + bcryptjs password hashing + admin middleware
-
-**Q: Can clients see their own packages?**
-A: Yes, clients can view their packages and progress
-
----
-
-## 🎉 You're Ready!
-
-Your system is:
-- ✅ Fully implemented
-- ✅ Thoroughly tested
-- ✅ Well documented
-- ✅ Production ready
-
-### Next Steps
-1. Read `DOCUMENTATION_INDEX.md` for learning paths
-2. Create sample memberships
-3. Create test customers
-4. Practice all workflows
-5. Customize for your business
-6. Deploy to production
-
----
-
-## 📞 Need Help?
-
-1. **Quick answers** → See FAQ above
-2. **Setup help** → Read `SETUP_MEMBERSHIPS.md`
-3. **API reference** → Read `MEMBERSHIPS_GUIDE.md`
-4. **Visual overview** → Read `ARCHITECTURE_DIAGRAM.md`
-5. **Test procedures** → Read `VERIFICATION_CHECKLIST.md`
-6. **Complete reference** → Read `DOCUMENTATION_INDEX.md`
-
----
-
-## 📈 Future Enhancements
-
-### Phase 2
-- Client dashboard shows membership benefits
-- Email notifications for deadlines
-- Automatic invoice generation
-- Payment gateway integration
-
-### Phase 3
-- Advanced analytics and reporting
-- Membership upgrade/downgrade
-- Seasonal promotions
-- API for third-party apps
-
-### Phase 4
-- Dark mode
-- Framer Motion animations
-- Lucide Icons integration
-- Advanced filtering & search
-
----
-
-**Version:** 2.0.0 (Membership & Custom Packages)
-**Status:** Production Ready ✅
-**Last Updated:** December 2025
-
-**Happy Building!** 🚀
-
----
-
-*For detailed documentation, see `DOCUMENTATION_INDEX.md`*
+For any questions or issues, please open an issue on the repository.
