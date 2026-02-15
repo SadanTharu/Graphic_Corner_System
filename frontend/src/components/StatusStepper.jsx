@@ -102,26 +102,6 @@ const StatusStepper = ({ order, onUploadPayment, onRequestRevision, onApprove, o
       );
     }
 
-    if (order.status === 'completed' && order.files?.final?.length > 0) {
-      return (
-        <div className="mt-6 space-y-2">
-          <p className="text-green-400 text-sm font-semibold">Final Deliverables:</p>
-          {order.files.final.map((link, idx) => (
-            <a
-              key={idx}
-              href={ensureUrl(link)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center space-x-2 text-green-400 hover:text-green-300 text-sm"
-            >
-              <ExternalLink size={14} />
-              <span>Final File {order.files.final.length > 1 ? `#${idx + 1}` : ''}</span>
-            </a>
-          ))}
-        </div>
-      );
-    }
-
     return null;
   };
 

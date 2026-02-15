@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { tasksAPI, ordersAPI } from '../../utils/api';
-import { Download, Link as LinkIcon, CheckCircle, Loader2, RefreshCw, Eye } from 'lucide-react';
+import { Download, Link as LinkIcon, CheckCircle, Loader2, RefreshCw, Eye, Edit3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ensureUrl = (url) => {
@@ -15,7 +15,7 @@ const TeamTasks = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState({});
-  const [linkModal, setLinkModal] = useState({ isOpen: false, orderId: null, type: null });
+  const [linkModal, setLinkModal] = useState({ isOpen: false, orderId: null, type: null, isUpdate: false });
   const [linkValue, setLinkValue] = useState('');
 
   useEffect(() => {
@@ -54,7 +54,7 @@ const TeamTasks = () => {
   };
 
   const handleSubmitLink = async () => {
-    const { orderId, type } = linkModal;
+    const { orderId, type, isUpdate } = linkModal;
     if (!linkValue.trim()) {
       toast.error('Please enter a link');
       return;
@@ -64,12 +64,13 @@ const TeamTasks = () => {
     try {
       await ordersAPI.uploadFiles(orderId, {
         fileType: type,
-        urls: [linkValue.trim()]
+        urls: [linkValue.trim()],
+        replace: isUpdate || false
       });
 
       const label = type === 'watermark' ? 'Preview' : 'Final';
-      toast.success(`${label} link submitted! Customer will be notified.`);
-      setLinkModal({ isOpen: false, orderId: null, type: null });
+      toast.success(`${label} link ${isUpdate ? 'updated' : 'submitted'}! Customer will be notified.`);
+      setLinkModal({ isOpen: false, orderId: null, type: null, isUpdate: false });
       setLinkValue('');
       fetchData();
     } catch (error) {
@@ -295,6 +296,16 @@ const TeamTasks = () => {
                               <Eye size={12} />
                               <span>View</span>
                             </button>
+                            <button
+                              onClick={() => {
+                                setLinkModal({ isOpen: true, orderId: order._id, type: 'watermark', isUpdate: true });
+                                setLinkValue(order.files.watermark[order.files.watermark.length - 1] || '');
+                              }}
+                              className="text-yellow-500 text-xs hover:underline flex items-center space-x-1"
+                            >
+                              <Edit3 size={12} />
+                              <span>Update</span>
+                            </button>
                           </div>
                         </div>
                       )}
@@ -309,6 +320,16 @@ const TeamTasks = () => {
                             >
                               <Eye size={12} />
                               <span>View</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                setLinkModal({ isOpen: true, orderId: order._id, type: 'final', isUpdate: true });
+                                setLinkValue(order.files.final[order.files.final.length - 1] || '');
+                              }}
+                              className="text-yellow-500 text-xs hover:underline flex items-center space-x-1"
+                            >
+                              <Edit3 size={12} />
+                              <span>Update</span>
                             </button>
                           </div>
                         </div>
@@ -327,10 +348,13 @@ const TeamTasks = () => {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
           <div className="bg-lightGray rounded-xl max-w-md w-full p-6">
             <h3 className="text-xl font-bold text-white mb-4">
-              Submit {linkModal.type === 'watermark' ? 'Preview' : 'Final'} Link
+              {linkModal.isUpdate ? 'Update' : 'Submit'} {linkModal.type === 'watermark' ? 'Preview' : 'Final'} Link
             </h3>
             <p className="text-textGray text-sm mb-4">
-              Paste the {linkModal.type === 'watermark' ? 'preview/watermark' : 'final deliverable'} link (Google Drive, Dropbox, etc.)
+              {linkModal.isUpdate 
+                ? `Replace the existing ${linkModal.type === 'watermark' ? 'preview/watermark' : 'final deliverable'} link with a new one.`
+                : `Paste the ${linkModal.type === 'watermark' ? 'preview/watermark' : 'final deliverable'} link (Google Drive, Dropbox, etc.)`
+              }
             </p>
             <input
               type="url"
@@ -343,7 +367,7 @@ const TeamTasks = () => {
             <div className="flex space-x-3">
               <button
                 onClick={() => {
-                  setLinkModal({ isOpen: false, orderId: null, type: null });
+                  setLinkModal({ isOpen: false, orderId: null, type: null, isUpdate: false });
                   setLinkValue('');
                 }}
                 className="flex-1 btn-secondary"
@@ -360,7 +384,7 @@ const TeamTasks = () => {
                 ) : (
                   <LinkIcon size={18} />
                 )}
-                <span>Submit</span>
+                <span>{linkModal.isUpdate ? 'Update' : 'Submit'}</span>
               </button>
             </div>
           </div>

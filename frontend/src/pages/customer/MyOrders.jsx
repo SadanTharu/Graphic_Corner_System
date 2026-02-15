@@ -4,7 +4,7 @@ import { useCart } from '../../context/CartContext';
 import { ordersAPI, walletAPI } from '../../utils/api';
 import StatusStepper from '../../components/StatusStepper';
 import PaymentUploadModal from '../../components/PaymentUploadModal';
-import { Eye, X } from 'lucide-react';
+import { Eye, X, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ensureUrl = (url) => {
@@ -229,11 +229,6 @@ const MyOrders = () => {
                   <p className="text-textGray text-sm mt-1">
                     Order #{order.orderNumber} • Placed on {new Date(order.createdAt).toLocaleDateString()}
                   </p>
-                  {order.assignedTo && (
-                    <p className="text-textGray text-sm">
-                      Assigned to: <span className="text-primary">{order.assignedTo?.name || 'Team Member'}</span>
-                    </p>
-                  )}
                 </div>
                 <div className="flex items-center space-x-3 mt-3 lg:mt-0">
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -302,6 +297,27 @@ const MyOrders = () => {
                   <p className="text-textGray text-sm">
                     <span className="font-semibold">Requirements:</span> {order.requirements}
                   </p>
+                </div>
+              )}
+
+              {/* Final Link in List */}
+              {order.status === 'completed' && order.files?.final?.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  {order.files.final.map((link, idx) => (
+                    <a
+                      key={idx}
+                      href={ensureUrl(link)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between w-full px-4 py-3 bg-green-500/10 border border-green-500/30 hover:bg-green-500/20 text-green-400 hover:text-green-300 rounded-lg font-semibold transition-all group"
+                    >
+                      <span className="flex items-center space-x-2">
+                        <ExternalLink size={18} />
+                        <span>Download Final File {order.files.final.length > 1 ? `#${idx + 1}` : ''}</span>
+                      </span>
+                      <span className="text-xs text-green-500/60 group-hover:text-green-400">Open Link →</span>
+                    </a>
+                  ))}
                 </div>
               )}
 
@@ -391,8 +407,40 @@ const MyOrders = () => {
                 </div>
               )}
 
+              {/* Final Deliverables - Prominent Banner */}
+              {selectedOrder.status === 'completed' && selectedOrder.files?.final?.length > 0 && (
+                <div className="bg-green-500/10 border-2 border-green-500/40 rounded-xl p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    </div>
+                    <div>
+                      <h4 className="text-green-400 font-bold text-lg">Your Files Are Ready!</h4>
+                      <p className="text-textGray text-sm">Click to download your final deliverables</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedOrder.files.final.map((link, idx) => (
+                      <a
+                        key={idx}
+                        href={ensureUrl(link)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between w-full px-4 py-3 bg-green-500/20 hover:bg-green-500/30 text-green-400 hover:text-green-300 rounded-lg font-semibold transition-all group"
+                      >
+                        <span className="flex items-center space-x-2">
+                          <Eye size={18} />
+                          <span>Download Final File {selectedOrder.files.final.length > 1 ? `#${idx + 1}` : ''}</span>
+                        </span>
+                        <span className="text-xs text-green-500/60 group-hover:text-green-400">Open Link →</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Files */}
-              {(selectedOrder.files?.watermark?.length > 0 || selectedOrder.files?.final?.length > 0) && (
+              {(selectedOrder.files?.watermark?.length > 0 || (selectedOrder.files?.final?.length > 0 && selectedOrder.status !== 'completed')) && (
                 <div className="bg-darker p-6 rounded-lg">
                   <h4 className="text-lg font-bold text-white mb-4">Files</h4>
                   <div className="space-y-3">
@@ -409,23 +457,6 @@ const MyOrders = () => {
                           >
                             <span className="text-white text-sm">Preview Link {selectedOrder.files.watermark.length > 1 ? `#${idx + 1}` : ''}</span>
                             <Eye size={18} className="text-primary" />
-                          </a>
-                        ))}
-                      </div>
-                    )}
-                    {selectedOrder.files.final?.length > 0 && (
-                      <div>
-                        <p className="text-textGray text-sm mb-2">Final Deliverables</p>
-                        {selectedOrder.files.final.map((link, idx) => (
-                          <a
-                            key={idx}
-                            href={ensureUrl(link)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-between p-3 bg-lightGray rounded-lg hover:bg-gray-700 transition-colors mb-2"
-                          >
-                            <span className="text-white text-sm">Final File {selectedOrder.files.final.length > 1 ? `#${idx + 1}` : ''}</span>
-                            <Eye size={18} className="text-green-500" />
                           </a>
                         ))}
                       </div>

@@ -287,7 +287,7 @@ router.post('/:id/payment', auth, async (req, res) => {
 // Upload files
 router.post('/:id/files', auth, isTeam, async (req, res) => {
   try {
-    const { fileType, urls } = req.body; // fileType: 'raw', 'watermark', 'final'
+    const { fileType, urls, replace } = req.body; // fileType: 'raw', 'watermark', 'final'; replace: boolean
     const order = await Order.findById(req.params.id)
       .populate('customer', 'name')
       .populate('service', 'name');
@@ -309,7 +309,12 @@ router.post('/:id/files', auth, isTeam, async (req, res) => {
       return trimmed;
     });
 
-    order.files[fileType].push(...normalizedUrls);
+    if (replace) {
+      // Replace all existing links with the new ones
+      order.files[fileType] = normalizedUrls;
+    } else {
+      order.files[fileType].push(...normalizedUrls);
+    }
     
     // Update status if watermark files uploaded
     if (fileType === 'watermark' && order.status === 'in_progress') {
