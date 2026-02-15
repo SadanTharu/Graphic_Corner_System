@@ -29,6 +29,7 @@ const Sidebar = () => {
   const adminLinks = [
     { name: 'Overview', path: '/admin/overview', icon: LayoutDashboard },
     { name: 'Services', path: '/admin/services', icon: Settings },
+    { name: 'Packages', path: '/admin/packages', icon: Package },
     { name: 'Finance', path: '/admin/finance', icon: BarChart3 },
     { name: 'Team', path: '/admin/team', icon: Users }
   ];

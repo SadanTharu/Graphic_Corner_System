@@ -24,6 +24,7 @@ const orderRoutes = require('./routes/orders');
 const taskRoutes = require('./routes/tasks');
 const walletRoutes = require('./routes/wallet');
 const uploadRoutes = require('./routes/upload');
+const packageRoutes = require('./routes/packages');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -33,6 +34,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/packages', packageRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -59,14 +61,16 @@ mongoose
     
     // Verify Cloudinary connection
     await verifyCloudinary();
-    
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
   })
   .catch((err) => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
+    console.error('❌ MongoDB connection error:', err.message);
+    console.warn('⚠️  Server will start without database connection');
   });
+
+// Start server regardless of database connection
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📡 API available at http://localhost:${PORT}/api`);
+});
 
 module.exports = app;

@@ -25,6 +25,7 @@ import AdminOverview from './pages/admin/AdminOverview';
 import AdminServices from './pages/admin/AdminServices';
 import AdminFinance from './pages/admin/AdminFinance';
 import AdminTeam from './pages/admin/AdminTeam';
+import AdminPackages from './pages/admin/AdminPackages';
 
 // Team Pages
 import TeamTasks from './pages/team/TeamTasks';
@@ -70,6 +71,7 @@ function App() {
               >
                 <Route path="overview" element={<AdminOverview />} />
                 <Route path="services" element={<AdminServices />} />
+                <Route path="packages" element={<AdminPackages />} />
                 <Route path="finance" element={<AdminFinance />} />
                 <Route path="team" element={<AdminTeam />} />
               </Route>

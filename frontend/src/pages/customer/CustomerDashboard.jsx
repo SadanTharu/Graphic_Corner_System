@@ -1,14 +1,34 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Clock, CheckCircle, Wallet, TrendingUp } from 'lucide-react';
+import { Package, Clock, CheckCircle, Wallet, TrendingUp, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { getOrdersByCustomerId } from '../../data';
+import { ordersAPI } from '../../utils/api';
 import StatusStepper from '../../components/StatusStepper';
+import toast from 'react-hot-toast';
 
 const CustomerDashboard = () => {
   const { user } = useAuth();
   const { wallet } = useCart();
-  const orders = getOrdersByCustomerId(user.id);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const data = await ordersAPI.getAll();
+      setOrders(data);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeOrders = orders.filter(o => o.status !== 'completed');
   const completedOrders = orders.filter(o => o.status === 'completed');
@@ -44,6 +64,14 @@ const CustomerDashboard = () => {
       bgColor: 'bg-yellow-500/10'
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

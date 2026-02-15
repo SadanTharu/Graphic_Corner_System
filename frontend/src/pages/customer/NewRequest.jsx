@@ -1,24 +1,45 @@
-import { useState } from 'react';
-import { services, packages } from '../../data';
+import { useState, useEffect } from 'react';
+import { servicesAPI } from '../../utils/api';
+import { packages } from '../../data';
 import { useCart } from '../../context/CartContext';
-import { Palette, Video, Box, Sparkles, Check } from 'lucide-react';
+import { Palette, Video, Box, Sparkles, Check, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const NewRequest = () => {
   const [selectedTab, setSelectedTab] = useState('services');
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
   const { addToCart, cart } = useCart();
 
   const iconMap = {
-    Palette,
-    Video,
-    Box,
-    Sparkles,
-    Image: Palette,
-    Film: Video,
-    FileText: Palette,
-    Monitor: Video,
-    Cube: Box,
-    PenTool: Sparkles
+    graphics: Palette,
+    video: Video,
+    '3d': Box,
+    ai: Sparkles,
+  };
+
+  const categoryLabels = {
+    'graphics': 'Graphics',
+    'video': 'Video',
+    '3d': '3D',
+    'ai': 'AI'
+  };
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
+
+  const fetchServices = async () => {
+    try {
+      setLoading(true);
+      const data = await servicesAPI.getAll();
+      setServices(data);
+    } catch (error) {
+      console.error('Error fetching services:', error);
+      toast.error('Failed to load services');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAddService = (service) => {
@@ -64,73 +85,87 @@ const NewRequest = () => {
 
       {/* Services Grid */}
       {selectedTab === 'services' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service) => {
-            const Icon = iconMap[service.icon] || Palette;
-            const inCart = isInCart(service.id);
+        <>
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            </div>
+          ) : services.length === 0 ? (
+            <div className="card text-center py-12">
+              <Box className="w-16 h-16 text-textGray mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">No Services Available</h3>
+              <p className="text-textGray">Please check back later for available services.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {services.map((service) => {
+                const Icon = iconMap[service.category] || Palette;
+                const inCart = isInCart(service._id);
 
-            return (
-              <div
-                key={service.id}
-                className="card hover:scale-105 transform transition-all duration-300"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-lg ${
-                    service.category === 'Graphics' ? 'bg-purple-500/10' :
-                    service.category === 'Video' ? 'bg-blue-500/10' :
-                    service.category === '3D' ? 'bg-green-500/10' :
-                    'bg-pink-500/10'
-                  }`}>
-                    <Icon className={`w-6 h-6 ${
-                      service.category === 'Graphics' ? 'text-purple-500' :
-                      service.category === 'Video' ? 'text-blue-500' :
-                      service.category === '3D' ? 'text-green-500' :
-                      'text-pink-500'
-                    }`} />
+                return (
+                  <div
+                    key={service._id}
+                    className="card hover:scale-105 transform transition-all duration-300"
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`p-3 rounded-lg ${
+                        service.category === 'graphics' ? 'bg-purple-500/10' :
+                        service.category === 'video' ? 'bg-blue-500/10' :
+                        service.category === '3d' ? 'bg-green-500/10' :
+                        'bg-pink-500/10'
+                      }`}>
+                        <Icon className={`w-6 h-6 ${
+                          service.category === 'graphics' ? 'text-purple-500' :
+                          service.category === 'video' ? 'text-blue-500' :
+                          service.category === '3d' ? 'text-green-500' :
+                          'text-pink-500'
+                        }`} />
+                      </div>
+                      <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded">
+                        {categoryLabels[service.category]}
+                      </span>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-white mb-2">{service.name}</h3>
+                    <p className="text-textGray text-sm mb-4">{service.description}</p>
+
+                    <div className="space-y-2 mb-4">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-textGray">Price:</span>
+                        <span className="text-white font-semibold">
+                          LKR {service.priceRange.min.toLocaleString()} - {service.priceRange.max.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-textGray">Delivery:</span>
+                        <span className="text-white">{service.deliveryTime}</span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleAddService(service)}
+                      disabled={inCart}
+                      className={`w-full py-2 rounded-lg font-medium transition-all ${
+                        inCart
+                          ? 'bg-green-500/20 text-green-500 cursor-not-allowed'
+                          : 'btn-primary'
+                      }`}
+                    >
+                      {inCart ? (
+                        <span className="flex items-center justify-center space-x-2">
+                          <Check size={18} />
+                          <span>Added to Cart</span>
+                        </span>
+                      ) : (
+                        'Select Service'
+                      )}
+                    </button>
                   </div>
-                  <span className="text-xs px-2 py-1 bg-primary/20 text-primary rounded">
-                    {service.category}
-                  </span>
-                </div>
-
-                <h3 className="text-lg font-bold text-white mb-2">{service.name}</h3>
-                <p className="text-textGray text-sm mb-4">{service.description}</p>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-textGray">Price:</span>
-                    <span className="text-white font-semibold">
-                      LKR {service.priceRange}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-textGray">Delivery:</span>
-                    <span className="text-white">{service.deliveryTime}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleAddService(service)}
-                  disabled={inCart}
-                  className={`w-full py-2 rounded-lg font-medium transition-all ${
-                    inCart
-                      ? 'bg-green-500/20 text-green-500 cursor-not-allowed'
-                      : 'btn-primary'
-                  }`}
-                >
-                  {inCart ? (
-                    <span className="flex items-center justify-center space-x-2">
-                      <Check size={18} />
-                      <span>Added to Cart</span>
-                    </span>
-                  ) : (
-                    'Select Service'
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Packages Grid */}

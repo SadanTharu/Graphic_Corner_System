@@ -1,4 +1,5 @@
-import { TrendingUp, DollarSign, Clock, Target } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { TrendingUp, DollarSign, Clock, Target, Loader2 } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -12,13 +13,64 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { financialData } from '../../data';
+import { ordersAPI } from '../../utils/api';
+import toast from 'react-hot-toast';
 
 const AdminFinance = () => {
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const data = await ordersAPI.getAll();
+      setOrders(data);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to load financial data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Calculate real financial data from orders
+  const totalRevenue = orders.reduce((sum, order) => {
+    if (order.status === 'completed') {
+      return sum + order.totalAmount;
+    }
+    return sum;
+  }, 0);
+
+  const pendingPayments = orders.reduce((sum, order) => {
+    if (order.status === 'awaiting_final' || order.status === 'awaiting_advance') {
+      return sum + (order.totalAmount - (order.advanceAmount || 0));
+    }
+    return sum;
+  }, 0);
+
+  // Group revenue by service category
+  const revenueByCategory = orders.reduce((acc, order) => {
+    if (order.status === 'completed' && order.service?.category) {
+      const category = order.service.category;
+      acc[category] = (acc[category] || 0) + order.totalAmount;
+    }
+    return acc;
+  }, {});
+
+  const revenueByService = Object.entries(revenueByCategory).map(([name, value]) => ({
+    name: name.charAt(0).toUpperCase() + name.slice(1),
+    value,
+    percentage: ((value / totalRevenue) * 100).toFixed(1)
+  }));
+
   const stats = [
     {
       title: 'Total Revenue',
-      value: `LKR ${financialData.totalRevenue.toLocaleString()}`,
+      value: `LKR ${totalRevenue.toLocaleString()}`,
       icon: DollarSign,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
@@ -27,7 +79,7 @@ const AdminFinance = () => {
     },
     {
       title: 'Pending Payments',
-      value: `LKR ${financialData.pendingPayments.toLocaleString()}`,
+      value: `LKR ${pendingPayments.toLocaleString()}`,
       icon: Clock,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
@@ -35,8 +87,8 @@ const AdminFinance = () => {
       isPositive: true
     },
     {
-      title: 'Monthly Growth',
-      value: `${financialData.monthlyGrowth}%`,
+      title: 'Total Orders',
+      value: orders.length.toString(),
       icon: TrendingUp,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
@@ -44,8 +96,8 @@ const AdminFinance = () => {
       isPositive: true
     },
     {
-      title: 'Target Achievement',
-      value: `${Math.round((financialData.actualSales / financialData.targetSales) * 100)}%`,
+      title: 'Completed Orders',
+      value: orders.filter(o => o.status === 'completed').length.toString(),
       icon: Target,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
@@ -85,12 +137,20 @@ const AdminFinance = () => {
     return null;
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-2xl md:text-3xl font-bold text-white">Financial Overview</h2>
-        <p className="text-textGray mt-2">Track revenue, expenses, and financial performance</p>
+        <p className="text-textGray mt-2">Track revenue and financial performance from completed orders</p>
       </div>
 
       {/* Stats Grid */}
@@ -119,49 +179,35 @@ const AdminFinance = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Bar Chart - Target vs Actual */}
-        <div className="card">
-          <h3 className="text-xl font-bold text-white mb-6">Target vs Actual Sales</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={financialData.monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2A2A2A" />
-              <XAxis dataKey="month" stroke="#B0B0B0" />
-              <YAxis stroke="#B0B0B0" />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend />
-              <Bar dataKey="target" fill="#E63946" name="Target" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="actual" fill="#4CAF50" name="Actual" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
+      <div className="grid grid-cols-1 gap-6">
         {/* Pie Chart - Revenue by Service */}
         <div className="card">
           <h3 className="text-xl font-bold text-white mb-6">Revenue by Service Type</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={financialData.revenueByService}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percentage }) => `${name} ${percentage}%`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {financialData.revenueByService.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip content={<PieTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
+          {revenueByService.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={revenueByService}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percentage }) => `${name} ${percentage}%`}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {revenueByService.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
 
-          {/* Legend */}
-          <div className="grid grid-cols-2 gap-3 mt-6">
-            {financialData.revenueByService.map((service, index) => (
+              {/* Legend */}
+              <div className="grid grid-cols-2 gap-3 mt-6">
+                {revenueByService.map((service, index) => (
               <div key={service.name} className="flex items-center space-x-2">
                 <div
                   className="w-4 h-4 rounded"
@@ -175,79 +221,71 @@ const AdminFinance = () => {
                 </div>
               </div>
             ))}
-          </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-12 text-textGray">
+              <p>No completed orders yet. Revenue data will appear here once orders are completed.</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Recent Transactions */}
+      {/* Recent Orders */}
       <div className="card">
         <h3 className="text-xl font-bold text-white mb-6">Recent Financial Activity</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-gray-700">
-                <th className="text-left text-textGray font-medium py-3 px-4">Date</th>
-                <th className="text-left text-textGray font-medium py-3 px-4">Description</th>
-                <th className="text-left text-textGray font-medium py-3 px-4">Type</th>
-                <th className="text-right text-textGray font-medium py-3 px-4">Amount</th>
-                <th className="text-right text-textGray font-medium py-3 px-4">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-800 hover:bg-darker transition-colors">
-                <td className="py-3 px-4 text-white">2026-02-14</td>
-                <td className="py-3 px-4 text-white">Order #3 - Final Payment</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs rounded">
-                    Income
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right text-green-500 font-semibold">
-                  +LKR 3,750
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs rounded">
-                    Completed
-                  </span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-800 hover:bg-darker transition-colors">
-                <td className="py-3 px-4 text-white">2026-02-12</td>
-                <td className="py-3 px-4 text-white">Order #2 - Advance Payment</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs rounded">
-                    Income
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right text-green-500 font-semibold">
-                  +LKR 1,625
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs rounded">
-                    Completed
-                  </span>
-                </td>
-              </tr>
-              <tr className="border-b border-gray-800 hover:bg-darker transition-colors">
-                <td className="py-3 px-4 text-white">2026-02-10</td>
-                <td className="py-3 px-4 text-white">Software Subscription</td>
-                <td className="py-3 px-4">
-                  <span className="px-2 py-1 bg-red-500/20 text-red-500 text-xs rounded">
-                    Expense
-                  </span>
-                </td>
-                <td className="py-3 px-4 text-right text-red-500 font-semibold">
-                  -LKR 12,500
-                </td>
-                <td className="py-3 px-4 text-right">
-                  <span className="px-2 py-1 bg-green-500/20 text-green-500 text-xs rounded">
-                    Paid
-                  </span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        {orders.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left text-textGray font-medium py-3 px-4">Date</th>
+                  <th className="text-left text-textGray font-medium py-3 px-4">Order ID</th>
+                  <th className="text-left text-textGray font-medium py-3 px-4">Customer</th>
+                  <th className="text-left text-textGray font-medium py-3 px-4">Service</th>
+                  <th className="text-right text-textGray font-medium py-3 px-4">Amount</th>
+                  <th className="text-right text-textGray font-medium py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.slice(0, 10).map((order) => (
+                  <tr key={order._id} className="border-b border-gray-800 hover:bg-darker transition-colors">
+                    <td className="py-3 px-4 text-white">
+                      {new Date(order.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 px-4 text-white">{order.orderNumber}</td>
+                    <td className="py-3 px-4 text-white">
+                      {order.customer?.name || 'Unknown'}
+                    </td>
+                    <td className="py-3 px-4 text-white">
+                      {order.service?.name || 'N/A'}
+                    </td>
+                    <td className="py-3 px-4 text-right text-green-500 font-semibold">
+                      LKR {order.totalAmount.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        order.status === 'completed' 
+                          ? 'bg-green-500/20 text-green-500'
+                          : order.status === 'in_progress'
+                          ? 'bg-blue-500/20 text-blue-500'
+                          : order.status === 'pending'
+                          ? 'bg-yellow-500/20 text-yellow-500'
+                          : 'bg-gray-500/20 text-gray-500'
+                      }`}>
+                        {order.status.replace('_', ' ')}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-textGray">
+            <p>No orders yet. Financial activity will appear here once orders are created.</p>
+          </div>
+        )}
       </div>
     </div>
   );

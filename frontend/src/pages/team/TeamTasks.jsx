@@ -1,12 +1,38 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { getTasksByTeamMemberId, getOrdersByTeamMemberId } from '../../data';
-import { Download, Upload, Link as LinkIcon, CheckCircle } from 'lucide-react';
+import { tasksAPI, ordersAPI } from '../../utils/api';
+import { Download, Upload, Link as LinkIcon, CheckCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TeamTasks = () => {
   const { user } = useAuth();
-  const tasks = getTasksByTeamMemberId(user.id);
-  const orders = getOrdersByTeamMemberId(user.id);
+  const [tasks, setTasks] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [tasksData, ordersData] = await Promise.all([
+        tasksAPI.getAll(),
+        ordersAPI.getAll()
+      ]);
+      // Filter for tasks assigned to this team member
+      const myTasks = tasksData.filter(t => t.assignedTo === user.id || t.assignedTo?._id === user.id);
+      const myOrders = ordersData.filter(o => o.assignedTo === user.id || o.assignedTo?._id === user.id);
+      setTasks(myTasks);
+      setOrders(myOrders);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDownloadRaw = (order) => {
     if (order.files.rawFootage) {
@@ -28,6 +54,14 @@ const TeamTasks = () => {
   const handleCompleteTask = (taskId) => {
     toast.success('Task marked as complete!');
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

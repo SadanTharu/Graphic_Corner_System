@@ -1,7 +1,37 @@
-import { Package, Users, DollarSign, TrendingUp, Clock } from 'lucide-react';
-import { orders, users, services } from '../../data';
+import { useState, useEffect } from 'react';
+import { Package, Users, DollarSign, TrendingUp, Clock, Loader2 } from 'lucide-react';
+import { ordersAPI, usersAPI, servicesAPI } from '../../utils/api';
+import toast from 'react-hot-toast';
 
 const AdminOverview = () => {
+  const [orders, setOrders] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [ordersData, usersData, servicesData] = await Promise.all([
+        ordersAPI.getAll(),
+        usersAPI.getAll(),
+        servicesAPI.getAll()
+      ]);
+      setOrders(ordersData);
+      setUsers(usersData);
+      setServices(servicesData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const activeOrders = orders.filter(o => o.status !== 'completed');
   const completedOrders = orders.filter(o => o.status === 'completed');
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
@@ -44,6 +74,14 @@ const AdminOverview = () => {
   ];
 
   const recentOrders = orders.slice(0, 5);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -93,10 +131,10 @@ const AdminOverview = () => {
             </thead>
             <tbody>
               {recentOrders.map((order) => (
-                <tr key={order.id} className="border-b border-gray-800 hover:bg-darker transition-colors">
-                  <td className="py-3 px-4 text-white">#{order.id}</td>
-                  <td className="py-3 px-4 text-white">{order.customerName}</td>
-                  <td className="py-3 px-4 text-textGray">{order.serviceName}</td>
+                <tr key={order._id} className="border-b border-gray-800 hover:bg-darker transition-colors">
+                  <td className="py-3 px-4 text-white">#{order.orderNumber}</td>
+                  <td className="py-3 px-4 text-white">{order.customer?.name || 'N/A'}</td>
+                  <td className="py-3 px-4 text-textGray">{order.service?.name || 'N/A'}</td>
                   <td className="py-3 px-4">
                     <span
                       className={`px-2 py-1 text-xs rounded ${
@@ -112,7 +150,7 @@ const AdminOverview = () => {
                     LKR {order.totalAmount.toLocaleString()}
                   </td>
                   <td className="py-3 px-4 text-textGray">
-                    {order.assignedTeamName || 'Unassigned'}
+                    {order.assignedTo?.name || 'Unassigned'}
                   </td>
                 </tr>
               ))}

@@ -1,8 +1,23 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Palette, Video, Box, Sparkles, Check, Star } from 'lucide-react';
-import { packages } from '../../data';
+import { useState, useEffect } from 'react';
+import { packagesAPI } from '../../utils/api';
 
 const Landing = () => {
+  const [packages, setPackages] = useState([]);
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const data = await packagesAPI.getAll();
+        setPackages(data.filter(pkg => pkg.isActive));
+      } catch (error) {
+        console.error('Error fetching packages:', error);
+      }
+    };
+    fetchPackages();
+  }, []);
+
   const features = [
     { icon: Palette, title: 'Graphics Design', desc: 'Logos, flyers, and social media posts' },
     { icon: Video, title: 'Video Editing', desc: 'Reels, YouTube videos, and thumbnails' },
@@ -90,6 +105,7 @@ const Landing = () => {
       </section>
 
       {/* Packages Section */}
+      {packages.length > 0 && (
       <section className="py-20 bg-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -146,6 +162,7 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Testimonials */}
       <section className="py-20 bg-darker">

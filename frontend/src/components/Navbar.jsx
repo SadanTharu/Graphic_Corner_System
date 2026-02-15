@@ -3,9 +3,11 @@ import { Menu, X, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import CartSidebar from './CartSidebar';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
   const { cartCount } = useCart();
@@ -74,12 +76,16 @@ const Navbar = () => {
             )}
 
             {cartCount > 0 && (
-              <Link to="/dashboard/new-request" className="relative">
+              <button
+                onClick={() => setCartOpen(true)}
+                className="relative"
+                title="View cart"
+              >
                 <ShoppingCart className="w-6 h-6 text-textGray hover:text-primary transition-colors" />
                 <span className="absolute -top-2 -right-2 bg-primary text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
                   {cartCount}
                 </span>
-              </Link>
+              </button>
             )}
           </div>
 
@@ -143,6 +149,9 @@ const Navbar = () => {
           </div>
         </div>
       )}
+
+      {/* Cart Sidebar */}
+      <CartSidebar isOpen={cartOpen} onClose={() => setCartOpen(false)} />
     </nav>
   );
 };

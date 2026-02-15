@@ -1,10 +1,38 @@
-import { useState } from 'react';
-import { users, tasks, orders } from '../../data';
-import { UserPlus, Mail, Phone } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { usersAPI, tasksAPI, ordersAPI } from '../../utils/api';
+import { UserPlus, Mail, Phone, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminTeam = () => {
   const [showKanban, setShowKanban] = useState(true);
+  const [users, setUsers] = useState([]);
+  const [tasks, setTasks] = useState([]);
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [usersData, tasksData, ordersData] = await Promise.all([
+        usersAPI.getAll(),
+        tasksAPI.getAll(),
+        ordersAPI.getAll()
+      ]);
+      setUsers(usersData);
+      setTasks(tasksData);
+      setOrders(ordersData);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load team data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const teamMembers = users.filter(u => u.role === 'team');
 
   const kanbanColumns = {
@@ -21,6 +49,14 @@ const AdminTeam = () => {
   const handleAddTeamMember = () => {
     toast.success('Add team member (Coming soon)');
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
