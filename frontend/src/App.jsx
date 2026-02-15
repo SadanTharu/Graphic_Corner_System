@@ -31,6 +31,7 @@ import AdminTeam from './pages/admin/AdminTeam';
 import AdminPackages from './pages/admin/AdminPackages';
 
 // Team Pages
+import TeamDashboard from './pages/team/TeamDashboard';
 import TeamTasks from './pages/team/TeamTasks';
 
 function App() {
@@ -92,7 +93,8 @@ function App() {
                   </ProtectedRoute>
                 }
               >
-                <Route index element={<Navigate to="/team/tasks" replace />} />
+                <Route index element={<Navigate to="/team/dashboard" replace />} />
+                <Route path="dashboard" element={<TeamDashboard />} />
                 <Route path="tasks" element={<TeamTasks />} />
               </Route>
 

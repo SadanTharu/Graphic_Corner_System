@@ -39,6 +39,7 @@ const Sidebar = () => {
   ];
 
   const teamLinks = [
+    { name: 'Dashboard', path: '/team/dashboard', icon: LayoutDashboard },
     { name: 'My Tasks', path: '/team/tasks', icon: ListChecks }
   ];
 
