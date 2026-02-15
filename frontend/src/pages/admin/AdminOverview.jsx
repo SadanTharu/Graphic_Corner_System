@@ -45,7 +45,7 @@ const AdminOverview = () => {
       icon: Package,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      change: '+3 new'
+      change: `${orders.length} total`
     },
     {
       title: 'Total Revenue',
@@ -53,7 +53,7 @@ const AdminOverview = () => {
       icon: DollarSign,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
-      change: '+15%'
+      change: `${completedOrders.length} completed`
     },
     {
       title: 'Team Members',
@@ -61,7 +61,7 @@ const AdminOverview = () => {
       icon: Users,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
-      change: 'Active'
+      change: `${users.length} total users`
     },
     {
       title: 'Total Customers',
@@ -69,7 +69,7 @@ const AdminOverview = () => {
       icon: TrendingUp,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
-      change: '+2 this week'
+      change: `${services.length} services`
     }
   ];
 

@@ -26,11 +26,11 @@ const StatusStepper = ({ order, onUploadPayment, onRequestRevision, onApprove, o
       return (
         <div className="mt-6 flex flex-wrap gap-3">
           <button
-            onClick={onUploadPayment}
+            onClick={() => onUploadPayment(order._id, 'advance')}
             className="btn-primary flex items-center space-x-2"
           >
             <Upload size={18} />
-            <span>Upload Payment Slip</span>
+            <span>Upload Advance Payment</span>
           </button>
           <div className="text-textGray text-sm">
             Amount: LKR {order.advanceAmount?.toLocaleString()} (25%)
@@ -53,13 +53,18 @@ const StatusStepper = ({ order, onUploadPayment, onRequestRevision, onApprove, o
               <span>View Watermark</span>
             </a>
             <button
-              onClick={onRequestRevision}
+              onClick={() => {
+                const reason = prompt('Please provide a reason for revision:');
+                if (reason) {
+                  onRequestRevision(order._id, reason);
+                }
+              }}
               className="bg-yellow-600 hover:bg-yellow-700 text-white font-medium py-2 px-6 rounded-lg transition-all"
             >
               Request Revision
             </button>
             <button
-              onClick={onApprove}
+              onClick={() => onApprove(order._id)}
               className="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-6 rounded-lg transition-all"
             >
               Approve & Continue
@@ -73,14 +78,14 @@ const StatusStepper = ({ order, onUploadPayment, onRequestRevision, onApprove, o
       return (
         <div className="mt-6 flex flex-wrap gap-3">
           <button
-            onClick={onUploadPayment}
+            onClick={() => onUploadPayment(order._id, 'final')}
             className="btn-primary flex items-center space-x-2"
           >
             <DollarSign size={18} />
             <span>Upload Final Payment</span>
           </button>
           <div className="text-textGray text-sm">
-            Amount: LKR {order.finalAmount?.toLocaleString()} (75%)
+            Amount: LKR {(order.totalAmount - order.advanceAmount)?.toLocaleString()} (75%)
           </div>
         </div>
       );

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { ordersAPI } from '../../utils/api';
 import StatusStepper from '../../components/StatusStepper';
 import PaymentUploadModal from '../../components/PaymentUploadModal';
 import { Eye, X } from 'lucide-react';
@@ -20,20 +21,17 @@ const MyOrders = () => {
 
   useEffect(() => {
     fetchOrders();
+    
+    // Auto-refresh orders every 30 seconds to catch status changes
+    const interval = setInterval(fetchOrders, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/orders', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setOrders(data.orders);
-      }
+      const orders = await ordersAPI.getAll();
+      setOrders(Array.isArray(orders) ? orders : []);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load orders');
@@ -58,23 +56,12 @@ const MyOrders = () => {
 
   const handlePaymentSubmit = async (paymentData) => {
     try {
-      const response = await fetch(`/api/orders/${paymentModal.orderId}/payment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          type: paymentModal.type,
-          amount: paymentModal.amount,
-          slip: paymentData.slip,
-          reference: paymentData.reference
-        })
+      await ordersAPI.uploadPayment(paymentModal.orderId, {
+        type: paymentModal.type,
+        amount: paymentModal.amount,
+        slip: paymentData.slip,
+        reference: paymentData.reference
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit payment');
-      }
 
       toast.success('Payment uploaded successfully! Awaiting admin approval.');
       
@@ -84,15 +71,8 @@ const MyOrders = () => {
       
       // Refresh selected order if viewing details
       if (selectedOrder && selectedOrder._id === paymentModal.orderId) {
-        const updatedResponse = await fetch(`/api/orders/${paymentModal.orderId}`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        if (updatedResponse.ok) {
-          const updatedData = await updatedResponse.json();
-          setSelectedOrder(updatedData.order);
-        }
+        const updatedOrder = await ordersAPI.getById(paymentModal.orderId);
+        setSelectedOrder(updatedOrder);
       }
     } catch (error) {
       console.error('Payment upload error:', error);
@@ -103,17 +83,46 @@ const MyOrders = () => {
 
   const filteredOrders = orders.filter(order => {
     if (filterStatus === 'all') return true;
-    if (filterStatus === 'active') return order.status !== 'completed';
+    if (filterStatus === 'active') return order.status !== 'completed' && order.status !== 'cancelled';
     if (filterStatus === 'completed') return order.status === 'completed';
+    if (filterStatus === 'cancelled') return order.status === 'cancelled';
     return true;
   });
 
-  const handleRequestRevision = () => {
-    toast.success('Revision requested successfully!');
+  const handleRequestRevision = async (orderId, reason) => {
+    try {
+      await ordersAPI.requestRevision(orderId, reason);
+
+      toast.success('Revision requested successfully!');
+      fetchOrders();
+      
+      // Update selected order if viewing details
+      if (selectedOrder && selectedOrder._id === orderId) {
+        const updatedOrder = await ordersAPI.getById(orderId);
+        setSelectedOrder(updatedOrder);
+      }
+    } catch (error) {
+      console.error('Error requesting revision:', error);
+      toast.error('Failed to request revision');
+    }
   };
 
-  const handleApprove = () => {
-    toast.success('Work approved! Moving to next step.');
+  const handleApprove = async (orderId) => {
+    try {
+      await ordersAPI.approveWork(orderId);
+
+      toast.success('Work approved! Moving to final payment.');
+      fetchOrders();
+      
+      // Update selected order if viewing details
+      if (selectedOrder && selectedOrder._id === orderId) {
+        const updatedOrder = await ordersAPI.getById(orderId);
+        setSelectedOrder(updatedOrder);
+      }
+    } catch (error) {
+      console.error('Error approving work:', error);
+      toast.error('Failed to approve work');
+    }
   };
 
   return (
@@ -144,7 +153,7 @@ const MyOrders = () => {
                 : 'bg-lightGray text-textGray hover:text-white'
             }`}
           >
-            Active ({orders.filter(o => o.status !== 'completed').length})
+            Active ({orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').length})
           </button>
           <button
             onClick={() => setFilterStatus('completed')}
@@ -155,6 +164,16 @@ const MyOrders = () => {
             }`}
           >
             Completed ({orders.filter(o => o.status === 'completed').length})
+          </button>
+          <button
+            onClick={() => setFilterStatus('cancelled')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              filterStatus === 'cancelled'
+                ? 'bg-red-500 text-white'
+                : 'bg-lightGray text-textGray hover:text-white'
+            }`}
+          >
+            Cancelled ({orders.filter(o => o.status === 'cancelled').length})
           </button>
         </div>
       </div>
@@ -167,16 +186,16 @@ const MyOrders = () => {
           </div>
         ) : (
           filteredOrders.map((order) => (
-            <div key={order.id} className="card">
+            <div key={order._id} className="card">
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
                 <div>
-                  <h3 className="text-xl font-bold text-white">{order.serviceName}</h3>
+                  <h3 className="text-xl font-bold text-white">{order.service?.name || 'Service'}</h3>
                   <p className="text-textGray text-sm mt-1">
-                    Order #{order.id} • Placed on {order.orderDate}
+                    Order #{order.orderNumber} • Placed on {new Date(order.createdAt).toLocaleDateString()}
                   </p>
-                  {order.assignedTeamName && (
+                  {order.assignedTo && (
                     <p className="text-textGray text-sm">
-                      Assigned to: <span className="text-primary">{order.assignedTeamName}</span>
+                      Assigned to: <span className="text-primary">{order.assignedTo?.name || 'Team Member'}</span>
                     </p>
                   )}
                 </div>
@@ -184,9 +203,34 @@ const MyOrders = () => {
                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${
                     order.status === 'completed'
                       ? 'bg-green-500/20 text-green-500'
-                      : 'bg-primary/20 text-primary'
+                      : order.status === 'cancelled'
+                      ? 'bg-red-500/20 text-red-500'
+                      : order.status === 'pending'
+                      ? 'bg-yellow-500/20 text-yellow-500'
+                      : order.status === 'awaiting_advance' || order.status === 'awaiting_final'
+                      ? 'bg-orange-500/20 text-orange-500'
+                      : order.status === 'review'
+                      ? 'bg-purple-500/20 text-purple-500'
+                      : 'bg-blue-500/20 text-blue-500'
                   }`}>
-                    {order.status === 'completed' ? 'Completed' : 'In Progress'}
+                    {order.status === 'completed' 
+                      ? 'Completed' 
+                      : order.status === 'cancelled'
+                      ? 'Cancelled'
+                      : order.status === 'pending'
+                      ? 'Pending Approval'
+                      : order.status === 'awaiting_advance'
+                      ? 'Awaiting Advance Payment'
+                      : order.status === 'awaiting_final'
+                      ? 'Awaiting Final Payment'
+                      : order.status === 'in_progress'
+                      ? 'In Progress'
+                      : order.status === 'review'
+                      ? 'Under Review'
+                      : order.status === 'revision_requested'
+                      ? 'Revision Requested'
+                      : order.status.replace('_', ' ').charAt(0).toUpperCase() + order.status.replace('_', ' ').slice(1)
+                    }
                   </span>
                   <button
                     onClick={() => setSelectedOrder(order)}
@@ -206,21 +250,30 @@ const MyOrders = () => {
                   </p>
                 </div>
                 <div>
-                  <p className="text-textGray text-sm">Expected Delivery</p>
-                  <p className="text-white font-semibold">{order.expectedDelivery}</p>
+                  <p className="text-textGray text-sm">Created</p>
+                  <p className="text-white font-semibold">{new Date(order.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <p className="text-textGray text-sm">Progress</p>
                   <p className="text-white font-semibold">
-                    {order.currentStep} of {order.totalSteps} steps
+                    Step {order.currentStep || 1} of 6
                   </p>
                 </div>
               </div>
 
-              {order.notes && (
+              {order.requirements && (
                 <div className="mt-4 p-3 bg-darker rounded-lg">
                   <p className="text-textGray text-sm">
-                    <span className="font-semibold">Notes:</span> {order.notes}
+                    <span className="font-semibold">Requirements:</span> {order.requirements}
+                  </p>
+                </div>
+              )}
+
+              {/* Cancellation Notice */}
+              {order.status === 'cancelled' && (
+                <div className="mt-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <p className="text-red-500 text-sm font-semibold">
+                    ⚠️ This order has been cancelled
                   </p>
                 </div>
               )}
@@ -235,8 +288,8 @@ const MyOrders = () => {
           <div className="bg-lightGray rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 bg-lightGray border-b border-gray-700 p-6 flex items-center justify-between">
               <div>
-                <h3 className="text-2xl font-bold text-white">{selectedOrder.serviceName}</h3>
-                <p className="text-textGray text-sm mt-1">Order #{selectedOrder.id}</p>
+                <h3 className="text-2xl font-bold text-white">{selectedOrder.service?.name || 'Service'}</h3>
+                <p className="text-textGray text-sm mt-1">Order #{selectedOrder.orderNumber}</p>
               </div>
               <button
                 onClick={() => setSelectedOrder(null)}
@@ -251,11 +304,11 @@ const MyOrders = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-textGray text-sm">Order Date</p>
-                  <p className="text-white font-semibold">{selectedOrder.orderDate}</p>
+                  <p className="text-white font-semibold">{new Date(selectedOrder.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div>
-                  <p className="text-textGray text-sm">Expected Delivery</p>
-                  <p className="text-white font-semibold">{selectedOrder.expectedDelivery}</p>
+                  <p className="text-textGray text-sm">Last Updated</p>
+                  <p className="text-white font-semibold">{new Date(selectedOrder.updatedAt).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <p className="text-textGray text-sm">Total Amount</p>
@@ -263,23 +316,44 @@ const MyOrders = () => {
                 </div>
                 <div>
                   <p className="text-textGray text-sm">Status</p>
-                  <p className="text-primary font-semibold capitalize">
+                  <p className={`font-semibold capitalize ${
+                    selectedOrder.status === 'cancelled' ? 'text-red-500' :
+                    selectedOrder.status === 'completed' ? 'text-green-500' :
+                    'text-primary'
+                  }`}>
                     {selectedOrder.status.replace('_', ' ')}
                   </p>
                 </div>
               </div>
 
+              {/* Cancellation Notice */}
+              {selectedOrder.status === 'cancelled' && (
+                <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-lg">
+                  <h4 className="text-red-500 font-bold mb-2">⚠️ Order Cancelled</h4>
+                  <p className="text-textGray text-sm">
+                    This order has been cancelled by the admin.
+                    {selectedOrder.notes && selectedOrder.notes.length > 0 && (
+                      <span className="block mt-2 text-white">
+                        <strong>Reason:</strong> {selectedOrder.notes[selectedOrder.notes.length - 1]?.message || 'No reason provided'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              )}
+
               {/* Progress Stepper */}
-              <div className="bg-darker p-6 rounded-lg">
-                <h4 className="text-lg font-bold text-white mb-4">Order Progress</h4>
-                <StatusStepper
-                  order={selectedOrder}
-                  orientation="vertical"
-                  onUploadPayment={handleUploadPayment}
-                  onRequestRevision={handleRequestRevision}
-                  onApprove={handleApprove}
-                />
-              </div>
+              {selectedOrder.status !== 'cancelled' && (
+                <div className="bg-darker p-6 rounded-lg">
+                  <h4 className="text-lg font-bold text-white mb-4">Order Progress</h4>
+                  <StatusStepper
+                    order={selectedOrder}
+                    orientation="vertical"
+                    onUploadPayment={handleUploadPayment}
+                    onRequestRevision={handleRequestRevision}
+                    onApprove={handleApprove}
+                  />
+                </div>
+              )}
 
               {/* Files */}
               {(selectedOrder.files?.watermark || selectedOrder.files?.finalLink) && (

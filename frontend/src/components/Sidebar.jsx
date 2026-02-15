@@ -9,6 +9,8 @@ import {
   Settings, 
   Users, 
   ListChecks,
+  ShoppingBag,
+  CreditCard,
   Menu,
   X
 } from 'lucide-react';
@@ -28,8 +30,10 @@ const Sidebar = () => {
 
   const adminLinks = [
     { name: 'Overview', path: '/admin/overview', icon: LayoutDashboard },
+    { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
     { name: 'Services', path: '/admin/services', icon: Settings },
     { name: 'Packages', path: '/admin/packages', icon: Package },
+    { name: 'Payments', path: '/admin/payments', icon: CreditCard },
     { name: 'Finance', path: '/admin/finance', icon: BarChart3 },
     { name: 'Team', path: '/admin/team', icon: Users }
   ];

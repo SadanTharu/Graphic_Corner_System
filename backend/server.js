@@ -25,6 +25,7 @@ const taskRoutes = require('./routes/tasks');
 const walletRoutes = require('./routes/wallet');
 const uploadRoutes = require('./routes/upload');
 const packageRoutes = require('./routes/packages');
+const notificationRoutes = require('./routes/notifications');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -35,6 +36,7 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/packages', packageRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

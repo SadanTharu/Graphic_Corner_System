@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, DollarSign, Clock, Target, Loader2 } from 'lucide-react';
+import { TrendingUp, DollarSign, Clock, Target, Loader2, Wallet, ArrowUpCircle, ArrowDownCircle, RefreshCw } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -13,24 +13,32 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
-import { ordersAPI } from '../../utils/api';
+import { ordersAPI, walletAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
 
 const AdminFinance = () => {
   const [orders, setOrders] = useState([]);
+  const [walletTransactions, setWalletTransactions] = useState([]);
+  const [pendingTopups, setPendingTopups] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchOrders();
+    fetchData();
   }, []);
 
-  const fetchOrders = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await ordersAPI.getAll();
-      setOrders(data);
+      const [ordersData, txData, topupsData] = await Promise.all([
+        ordersAPI.getAll(),
+        walletAPI.getAllTransactions().catch(() => ({ transactions: [] })),
+        walletAPI.getPendingTopups().catch(() => ({ transactions: [] }))
+      ]);
+      setOrders(Array.isArray(ordersData) ? ordersData : []);
+      setWalletTransactions(txData.transactions || []);
+      setPendingTopups(topupsData.transactions || []);
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      console.error('Error fetching financial data:', error);
       toast.error('Failed to load financial data');
     } finally {
       setLoading(false);
@@ -52,6 +60,16 @@ const AdminFinance = () => {
     return sum;
   }, 0);
 
+  // Wallet calculations
+  const walletTopupsCompleted = walletTransactions.filter(t => t.type === 'topup' && t.status === 'completed');
+  const walletPayments = walletTransactions.filter(t => t.type === 'payment');
+  const walletRefunds = walletTransactions.filter(t => t.type === 'refund');
+  const totalWalletTopups = walletTopupsCompleted.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const totalWalletPayments = walletPayments.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const totalWalletRefunds = walletRefunds.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const pendingTopupAmount = pendingTopups.reduce((sum, t) => sum + (t.amount || 0), 0);
+  const netWalletBalance = totalWalletTopups - totalWalletPayments - totalWalletRefunds;
+
   // Group revenue by service category
   const revenueByCategory = orders.reduce((acc, order) => {
     if (order.status === 'completed' && order.service?.category) {
@@ -67,6 +85,9 @@ const AdminFinance = () => {
     percentage: ((value / totalRevenue) * 100).toFixed(1)
   }));
 
+  const completedCount = orders.filter(o => o.status === 'completed').length;
+  const avgOrderValue = orders.length > 0 ? Math.round(totalRevenue / orders.length) : 0;
+
   const stats = [
     {
       title: 'Total Revenue',
@@ -74,7 +95,7 @@ const AdminFinance = () => {
       icon: DollarSign,
       color: 'text-green-500',
       bgColor: 'bg-green-500/10',
-      change: '+12.5%',
+      change: `${completedCount} completed`,
       isPositive: true
     },
     {
@@ -83,7 +104,7 @@ const AdminFinance = () => {
       icon: Clock,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10',
-      change: '-5.2%',
+      change: `${orders.filter(o => o.status === 'awaiting_advance' || o.status === 'awaiting_final').length} pending`,
       isPositive: true
     },
     {
@@ -92,17 +113,17 @@ const AdminFinance = () => {
       icon: TrendingUp,
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10',
-      change: '+2.1%',
+      change: `Avg: LKR ${avgOrderValue.toLocaleString()}`,
       isPositive: true
     },
     {
       title: 'Completed Orders',
-      value: orders.filter(o => o.status === 'completed').length.toString(),
+      value: completedCount.toString(),
       icon: Target,
       color: 'text-primary',
       bgColor: 'bg-primary/10',
-      change: '83.3%',
-      isPositive: false
+      change: `${orders.length > 0 ? ((completedCount / orders.length) * 100).toFixed(1) : 0}% completion rate`,
+      isPositive: true
     }
   ];
 
@@ -148,9 +169,15 @@ const AdminFinance = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white">Financial Overview</h2>
-        <p className="text-textGray mt-2">Track revenue and financial performance from completed orders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white">Financial Overview</h2>
+          <p className="text-textGray mt-2">Track revenue, wallet activity, and financial performance</p>
+        </div>
+        <button onClick={fetchData} className="btn-secondary flex items-center space-x-2">
+          <RefreshCw size={16} />
+          <span>Refresh</span>
+        </button>
       </div>
 
       {/* Stats Grid */}
@@ -179,7 +206,7 @@ const AdminFinance = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Pie Chart - Revenue by Service */}
         <div className="card">
           <h3 className="text-xl font-bold text-white mb-6">Revenue by Service Type</h3>
@@ -229,7 +256,158 @@ const AdminFinance = () => {
             </div>
           )}
         </div>
+
+        {/* Wallet Overview Card */}
+        <div className="card">
+          <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+            <Wallet className="w-5 h-5 text-primary" />
+            <span>Wallet Overview</span>
+          </h3>
+
+          {/* Wallet Stats */}
+          <div className="space-y-4 mb-6">
+            <div className="flex items-center justify-between p-3 bg-darker rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-green-500/10 rounded-lg">
+                  <ArrowDownCircle className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-textGray text-xs">Total Top-ups</p>
+                  <p className="text-white font-semibold">LKR {totalWalletTopups.toLocaleString()}</p>
+                </div>
+              </div>
+              <span className="text-green-500 text-xs bg-green-500/10 px-2 py-1 rounded">
+                {walletTopupsCompleted.length} approved
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-darker rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-red-500/10 rounded-lg">
+                  <ArrowUpCircle className="w-5 h-5 text-red-500" />
+                </div>
+                <div>
+                  <p className="text-textGray text-xs">Wallet Payments</p>
+                  <p className="text-white font-semibold">LKR {totalWalletPayments.toLocaleString()}</p>
+                </div>
+              </div>
+              <span className="text-red-500 text-xs bg-red-500/10 px-2 py-1 rounded">
+                {walletPayments.length} transactions
+              </span>
+            </div>
+
+            {totalWalletRefunds > 0 && (
+              <div className="flex items-center justify-between p-3 bg-darker rounded-lg">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-orange-500/10 rounded-lg">
+                    <ArrowDownCircle className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <div>
+                    <p className="text-textGray text-xs">Refunds</p>
+                    <p className="text-white font-semibold">LKR {totalWalletRefunds.toLocaleString()}</p>
+                  </div>
+                </div>
+                <span className="text-orange-500 text-xs bg-orange-500/10 px-2 py-1 rounded">
+                  {walletRefunds.length} refunds
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between p-3 bg-darker rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-yellow-500/10 rounded-lg">
+                  <Clock className="w-5 h-5 text-yellow-500" />
+                </div>
+                <div>
+                  <p className="text-textGray text-xs">Pending Top-ups</p>
+                  <p className="text-white font-semibold">LKR {pendingTopupAmount.toLocaleString()}</p>
+                </div>
+              </div>
+              <span className="text-yellow-500 text-xs bg-yellow-500/10 px-2 py-1 rounded">
+                {pendingTopups.length} pending
+              </span>
+            </div>
+          </div>
+
+          {/* Net Balance */}
+          <div className="border-t border-gray-700 pt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-textGray text-sm">Net Wallet Circulation</p>
+              <p className="text-xl font-bold text-primary">LKR {netWalletBalance.toLocaleString()}</p>
+            </div>
+            <p className="text-textGray text-xs mt-1">
+              Total held across all customer wallets
+            </p>
+          </div>
+        </div>
       </div>
+
+      {/* Wallet Transactions Table */}
+      {walletTransactions.length > 0 && (
+        <div className="card">
+          <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+            <Wallet className="w-5 h-5 text-primary" />
+            <span>Recent Wallet Transactions</span>
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-700">
+                  <th className="text-left text-textGray font-medium py-3 px-4 text-sm">Date</th>
+                  <th className="text-left text-textGray font-medium py-3 px-4 text-sm">Customer</th>
+                  <th className="text-left text-textGray font-medium py-3 px-4 text-sm">Type</th>
+                  <th className="text-left text-textGray font-medium py-3 px-4 text-sm">Reference</th>
+                  <th className="text-right text-textGray font-medium py-3 px-4 text-sm">Amount</th>
+                  <th className="text-right text-textGray font-medium py-3 px-4 text-sm">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {walletTransactions.slice(0, 15).map((tx) => (
+                  <tr key={tx._id} className="border-b border-gray-800 hover:bg-darker transition-colors">
+                    <td className="py-3 px-4 text-white text-sm">
+                      {new Date(tx.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 px-4">
+                      <p className="text-white text-sm">{tx.user?.name || 'Unknown'}</p>
+                      <p className="text-textGray text-xs">{tx.user?.email || ''}</p>
+                    </td>
+                    <td className="py-3 px-4">
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full capitalize ${
+                        tx.type === 'topup'
+                          ? 'bg-green-500/20 text-green-500'
+                          : tx.type === 'refund'
+                          ? 'bg-orange-500/20 text-orange-500'
+                          : 'bg-red-500/20 text-red-500'
+                      }`}>
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-textGray text-sm">
+                      {tx.reference || tx.order?.orderNumber || '—'}
+                    </td>
+                    <td className={`py-3 px-4 text-right font-semibold text-sm ${
+                      tx.type === 'topup' || tx.type === 'refund' ? 'text-green-500' : 'text-red-500'
+                    }`}>
+                      {tx.type === 'topup' || tx.type === 'refund' ? '+' : '-'} LKR {(tx.amount || 0).toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        tx.status === 'completed'
+                          ? 'bg-green-500/20 text-green-500'
+                          : tx.status === 'pending'
+                          ? 'bg-yellow-500/20 text-yellow-500'
+                          : 'bg-red-500/20 text-red-500'
+                      }`}>
+                        {tx.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Recent Orders */}
       <div className="card">

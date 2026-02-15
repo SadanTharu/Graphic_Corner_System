@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { tasksAPI, ordersAPI } from '../../utils/api';
-import { Download, Upload, Link as LinkIcon, CheckCircle, Loader2 } from 'lucide-react';
+import { tasksAPI, ordersAPI, uploadAPI } from '../../utils/api';
+import { Download, Upload, Link as LinkIcon, CheckCircle, Loader2, RefreshCw, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TeamTasks = () => {
@@ -9,22 +9,28 @@ const TeamTasks = () => {
   const [tasks, setTasks] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState({});
+  const [finalLinkModal, setFinalLinkModal] = useState({ isOpen: false, orderId: null });
+  const [finalLink, setFinalLink] = useState('');
+  const watermarkInputRef = useRef({});
 
   useEffect(() => {
     fetchData();
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchData = async () => {
     try {
-      setLoading(true);
+      if (tasks.length === 0 && orders.length === 0) setLoading(true);
       const [tasksData, ordersData] = await Promise.all([
         tasksAPI.getAll(),
         ordersAPI.getAll()
       ]);
-      // Filter for tasks assigned to this team member
-      const myTasks = tasksData.filter(t => t.assignedTo === user.id || t.assignedTo?._id === user.id);
-      const myOrders = ordersData.filter(o => o.assignedTo === user.id || o.assignedTo?._id === user.id);
-      setTasks(myTasks);
+      setTasks(Array.isArray(tasksData) ? tasksData : []);
+      const myOrders = (Array.isArray(ordersData) ? ordersData : []).filter(o =>
+        o.assignedTo?._id === user?._id || o.assignedTo === user?._id
+      );
       setOrders(myOrders);
     } catch (error) {
       console.error('Error fetching data:', error);
@@ -35,24 +41,97 @@ const TeamTasks = () => {
   };
 
   const handleDownloadRaw = (order) => {
-    if (order.files.rawFootage) {
-      window.open(order.files.rawFootage, '_blank');
-      toast.success('Opening raw footage...');
+    if (order.files?.raw?.length > 0) {
+      order.files.raw.forEach(url => window.open(url, '_blank'));
+      toast.success('Opening raw files...');
     } else {
-      toast.error('No raw footage available');
+      toast.error('No raw files available');
     }
   };
 
-  const handleUploadWatermark = () => {
-    toast.success('Upload watermark feature (Coming soon)');
+  const handleUploadWatermark = async (orderId, files) => {
+    if (!files || files.length === 0) return;
+
+    setUploading(prev => ({ ...prev, [orderId]: 'watermark' }));
+    try {
+      const uploadedUrls = [];
+      
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const result = await uploadAPI.single(formData);
+        uploadedUrls.push(result.file.url);
+      }
+
+      await ordersAPI.uploadFiles(orderId, {
+        fileType: 'watermark',
+        urls: uploadedUrls
+      });
+
+      toast.success('Preview files uploaded successfully! Customer will be notified.');
+      fetchData();
+    } catch (error) {
+      console.error('Error uploading watermark:', error);
+      toast.error(error.message || 'Failed to upload preview files');
+    } finally {
+      setUploading(prev => ({ ...prev, [orderId]: null }));
+    }
   };
 
-  const handleUploadFinal = () => {
-    toast.success('Upload final file feature (Coming soon)');
+  const handleUploadFinal = async (orderId) => {
+    if (!finalLink.trim()) {
+      toast.error('Please enter a final file link');
+      return;
+    }
+
+    setUploading(prev => ({ ...prev, [orderId]: 'final' }));
+    try {
+      await ordersAPI.uploadFiles(orderId, {
+        fileType: 'final',
+        urls: [finalLink.trim()]
+      });
+
+      toast.success('Final file link submitted! Customer will be notified.');
+      setFinalLinkModal({ isOpen: false, orderId: null });
+      setFinalLink('');
+      fetchData();
+    } catch (error) {
+      console.error('Error uploading final:', error);
+      toast.error(error.message || 'Failed to submit final file');
+    } finally {
+      setUploading(prev => ({ ...prev, [orderId]: null }));
+    }
   };
 
-  const handleCompleteTask = (taskId) => {
-    toast.success('Task marked as complete!');
+  const handleCompleteTask = async (taskId) => {
+    try {
+      await tasksAPI.update(taskId, { status: 'done' });
+      toast.success('Task marked as complete!');
+      fetchData();
+    } catch (error) {
+      console.error('Error completing task:', error);
+      toast.error('Failed to complete task');
+    }
+  };
+
+  const completedToday = [...tasks, ...orders].filter(item => {
+    const completed = item.completedAt || (item.status === 'completed' && item.updatedAt);
+    if (!completed) return false;
+    const today = new Date();
+    const completedDate = new Date(completed);
+    return completedDate.toDateString() === today.toDateString();
+  }).length;
+
+  const getStatusBadge = (status) => {
+    const styles = {
+      in_progress: 'bg-blue-500/20 text-blue-500',
+      review: 'bg-yellow-500/20 text-yellow-500',
+      revision_requested: 'bg-red-500/20 text-red-500',
+      awaiting_final: 'bg-orange-500/20 text-orange-500',
+      completed: 'bg-green-500/20 text-green-500',
+      awaiting_advance: 'bg-purple-500/20 text-purple-500',
+    };
+    return styles[status] || 'bg-textGray/20 text-textGray';
   };
 
   if (loading) {
@@ -66,28 +145,34 @@ const TeamTasks = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl md:text-3xl font-bold text-white">My Tasks</h2>
-        <p className="text-textGray mt-2">Manage your assigned work</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl md:text-3xl font-bold text-white">My Tasks</h2>
+          <p className="text-textGray mt-2">Manage your assigned work</p>
+        </div>
+        <button onClick={fetchData} className="btn-secondary flex items-center space-x-2">
+          <RefreshCw size={16} />
+          <span>Refresh</span>
+        </button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="card">
           <p className="text-textGray text-sm mb-2">Active Tasks</p>
-          <p className="text-3xl font-bold text-primary">{tasks.length}</p>
+          <p className="text-3xl font-bold text-primary">{tasks.filter(t => t.status !== 'done').length}</p>
         </div>
         <div className="card">
           <p className="text-textGray text-sm mb-2">Assigned Orders</p>
-          <p className="text-3xl font-bold text-blue-500">{orders.length}</p>
+          <p className="text-3xl font-bold text-blue-500">{orders.filter(o => o.status !== 'completed').length}</p>
         </div>
         <div className="card">
           <p className="text-textGray text-sm mb-2">Completed Today</p>
-          <p className="text-3xl font-bold text-green-500">0</p>
+          <p className="text-3xl font-bold text-green-500">{completedToday}</p>
         </div>
       </div>
 
-      {/* Tasks List */}
+      {/* Content */}
       <div className="space-y-4">
         {tasks.length === 0 && orders.length === 0 ? (
           <div className="card text-center py-12">
@@ -96,8 +181,8 @@ const TeamTasks = () => {
         ) : (
           <>
             {/* Task Cards */}
-            {tasks.map(task => (
-              <div key={task.id} className="card">
+            {tasks.filter(t => t.status !== 'done').map(task => (
+              <div key={task._id} className="card">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-white">{task.title}</h3>
@@ -111,22 +196,18 @@ const TeamTasks = () => {
                     }`}>
                       {task.priority} priority
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      task.status === 'in_progress' ? 'bg-primary/20 text-primary' :
-                      task.status === 'review' ? 'bg-yellow-500/20 text-yellow-500' :
-                      'bg-textGray/20 text-textGray'
-                    }`}>
-                      {task.status.replace('_', ' ')}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(task.status)}`}>
+                      {task.status?.replace(/_/g, ' ')}
                     </span>
                   </div>
                 </div>
 
                 <div className="flex items-center space-x-4 text-sm text-textGray mb-4">
-                  <span>Due: {task.dueDate}</span>
+                  <span>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}</span>
                 </div>
 
                 <button
-                  onClick={() => handleCompleteTask(task.id)}
+                  onClick={() => handleCompleteTask(task._id)}
                   className="btn-primary flex items-center space-x-2"
                 >
                   <CheckCircle size={18} />
@@ -136,27 +217,40 @@ const TeamTasks = () => {
             ))}
 
             {/* Order Cards */}
-            {orders.map(order => (
-              <div key={order.id} className="card">
+            {orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled').map(order => (
+              <div key={order._id} className="card">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
                   <div>
-                    <h3 className="text-xl font-bold text-white">{order.serviceName}</h3>
+                    <h3 className="text-xl font-bold text-white">{order.service?.name || 'Service'}</h3>
                     <p className="text-textGray text-sm mt-1">
-                      Order #{order.id} • Customer: {order.customerName}
+                      Order #{order.orderNumber} &bull; Customer: {order.customer?.name || 'N/A'}
                     </p>
-                    <p className="text-textGray text-sm">Due: {order.expectedDelivery}</p>
+                    <p className="text-textGray text-sm">
+                      Amount: <span className="text-primary font-semibold">LKR {order.totalAmount?.toLocaleString()}</span>
+                    </p>
+                    <p className="text-textGray text-sm">Created: {new Date(order.createdAt).toLocaleDateString()}</p>
                   </div>
                   <div>
-                    <span className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm">
-                      {order.status.replace('_', ' ')}
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(order.status)}`}>
+                      {order.status?.replace(/_/g, ' ')}
                     </span>
                   </div>
                 </div>
 
-                {order.notes && (
+                {order.requirements && (
                   <div className="bg-darker p-3 rounded-lg mb-4">
                     <p className="text-textGray text-sm">
-                      <span className="font-semibold">Client Notes:</span> {order.notes}
+                      <span className="font-semibold text-white">Requirements:</span> {order.requirements}
+                    </p>
+                  </div>
+                )}
+
+                {/* Revision Notes */}
+                {order.status === 'revision_requested' && order.revisions?.length > 0 && (
+                  <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-lg mb-4">
+                    <p className="text-red-400 text-sm font-semibold mb-1">Revision Requested:</p>
+                    <p className="text-textGray text-sm">
+                      {order.revisions[order.revisions.length - 1].reason}
                     </p>
                   </div>
                 )}
@@ -166,27 +260,47 @@ const TeamTasks = () => {
                   <button
                     onClick={() => handleDownloadRaw(order)}
                     className={`btn-secondary flex items-center justify-center space-x-2 ${
-                      !order.files?.rawFootage ? 'opacity-50 cursor-not-allowed' : ''
+                      !order.files?.raw?.length ? 'opacity-50 cursor-not-allowed' : ''
                     }`}
-                    disabled={!order.files?.rawFootage}
+                    disabled={!order.files?.raw?.length}
                   >
                     <Download size={18} />
                     <span>Download Raw</span>
                   </button>
 
-                  {/* Upload Watermark */}
-                  <button
-                    onClick={handleUploadWatermark}
-                    className="bg-blue-500/20 text-blue-500 hover:bg-blue-500/30 font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2"
-                  >
-                    <Upload size={18} />
-                    <span>Upload Preview</span>
-                  </button>
+                  {/* Upload Watermark/Preview */}
+                  <div>
+                    <input
+                      type="file"
+                      ref={el => watermarkInputRef.current[order._id] = el}
+                      onChange={(e) => handleUploadWatermark(order._id, e.target.files)}
+                      className="hidden"
+                      accept="image/*,.pdf,.psd,.ai"
+                      multiple
+                    />
+                    <button
+                      onClick={() => watermarkInputRef.current[order._id]?.click()}
+                      disabled={uploading[order._id] === 'watermark' || order.status === 'awaiting_advance'}
+                      className={`w-full bg-blue-500/20 text-blue-500 hover:bg-blue-500/30 font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2 ${
+                        uploading[order._id] === 'watermark' || order.status === 'awaiting_advance' ? 'opacity-50 cursor-not-allowed' : ''
+                      }`}
+                    >
+                      {uploading[order._id] === 'watermark' ? (
+                        <Loader2 size={18} className="animate-spin" />
+                      ) : (
+                        <Upload size={18} />
+                      )}
+                      <span>{uploading[order._id] === 'watermark' ? 'Uploading...' : 'Upload Preview'}</span>
+                    </button>
+                  </div>
 
-                  {/* Upload Final */}
+                  {/* Upload Final Link */}
                   <button
-                    onClick={handleUploadFinal}
-                    className="bg-green-500/20 text-green-500 hover:bg-green-500/30 font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2"
+                    onClick={() => setFinalLinkModal({ isOpen: true, orderId: order._id })}
+                    disabled={order.status !== 'awaiting_final' || uploading[order._id] === 'final'}
+                    className={`bg-green-500/20 text-green-500 hover:bg-green-500/30 font-medium py-2 px-4 rounded-lg transition-all flex items-center justify-center space-x-2 ${
+                      order.status !== 'awaiting_final' ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
                   >
                     <LinkIcon size={18} />
                     <span>Final Link</span>
@@ -194,20 +308,38 @@ const TeamTasks = () => {
                 </div>
 
                 {/* Uploaded Files Display */}
-                {(order.files?.watermark || order.files?.finalLink) && (
+                {(order.files?.watermark?.length > 0 || order.files?.final?.length > 0) && (
                   <div className="mt-4 pt-4 border-t border-gray-700">
                     <p className="text-textGray text-sm mb-2 font-semibold">Uploaded Files:</p>
                     <div className="space-y-2">
-                      {order.files.watermark && (
+                      {order.files?.watermark?.length > 0 && (
                         <div className="flex items-center justify-between p-2 bg-darker rounded">
-                          <span className="text-white text-sm">Preview/Watermark</span>
-                          <span className="text-green-500 text-xs">✓ Uploaded</span>
+                          <span className="text-white text-sm">Preview/Watermark ({order.files.watermark.length})</span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-green-500 text-xs">&#10003; Uploaded</span>
+                            <button
+                              onClick={() => order.files.watermark.forEach(url => window.open(url, '_blank'))}
+                              className="text-blue-500 text-xs hover:underline flex items-center space-x-1"
+                            >
+                              <Eye size={12} />
+                              <span>View</span>
+                            </button>
+                          </div>
                         </div>
                       )}
-                      {order.files.finalLink && (
+                      {order.files?.final?.length > 0 && (
                         <div className="flex items-center justify-between p-2 bg-darker rounded">
-                          <span className="text-white text-sm">Final File</span>
-                          <span className="text-green-500 text-xs">✓ Uploaded</span>
+                          <span className="text-white text-sm">Final File ({order.files.final.length})</span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-green-500 text-xs">&#10003; Uploaded</span>
+                            <button
+                              onClick={() => order.files.final.forEach(url => window.open(url, '_blank'))}
+                              className="text-blue-500 text-xs hover:underline flex items-center space-x-1"
+                            >
+                              <Eye size={12} />
+                              <span>View</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -218,6 +350,48 @@ const TeamTasks = () => {
           </>
         )}
       </div>
+
+      {/* Final Link Modal */}
+      {finalLinkModal.isOpen && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-lightGray rounded-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-white mb-4">Submit Final File Link</h3>
+            <p className="text-textGray text-sm mb-4">
+              Enter the download link for the final file (Google Drive, Dropbox, etc.)
+            </p>
+            <input
+              type="url"
+              value={finalLink}
+              onChange={(e) => setFinalLink(e.target.value)}
+              placeholder="https://drive.google.com/..."
+              className="input-field mb-4"
+            />
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setFinalLinkModal({ isOpen: false, orderId: null });
+                  setFinalLink('');
+                }}
+                className="flex-1 btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleUploadFinal(finalLinkModal.orderId)}
+                disabled={!finalLink.trim() || uploading[finalLinkModal.orderId] === 'final'}
+                className="flex-1 btn-primary flex items-center justify-center space-x-2"
+              >
+                {uploading[finalLinkModal.orderId] === 'final' ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <LinkIcon size={18} />
+                )}
+                <span>Submit</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

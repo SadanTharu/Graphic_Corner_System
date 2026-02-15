@@ -15,7 +15,8 @@ router.get('/', async (req, res) => {
     const services = await Service.find(filter).sort({ createdAt: -1 });
     res.json({ services });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching services:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -41,6 +42,7 @@ router.post('/', auth, isAdmin, async (req, res) => {
     await service.save();
     res.status(201).json({ message: 'Service created successfully', service });
   } catch (error) {
+    console.error('Error creating service:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

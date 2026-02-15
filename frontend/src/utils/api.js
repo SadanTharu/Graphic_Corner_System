@@ -17,9 +17,13 @@ const handleResponse = async (response) => {
 const apiRequest = async (endpoint, options = {}) => {
   const token = getAuthToken();
   const headers = {
-    'Content-Type': 'application/json',
     ...options.headers,
   };
+
+  // Only set Content-Type for non-FormData requests
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
@@ -77,13 +81,17 @@ export const ordersAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
-  updateStatus: (id, status) => apiRequest(`/api/orders/${id}/status`, {
+  updateStatus: (id, data) => apiRequest(`/api/orders/${id}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status }),
+    body: JSON.stringify(data),
   }),
   uploadPayment: (id, data) => apiRequest(`/api/orders/${id}/payment`, {
     method: 'POST',
     body: JSON.stringify(data),
+  }),
+  verifyPayment: (id, paymentIndex, action) => apiRequest(`/api/orders/${id}/payment/${paymentIndex}/verify`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
   }),
   uploadFiles: (id, data) => apiRequest(`/api/orders/${id}/files`, {
     method: 'POST',
@@ -96,6 +104,9 @@ export const ordersAPI = {
   requestRevision: (id, reason) => apiRequest(`/api/orders/${id}/revision`, {
     method: 'POST',
     body: JSON.stringify({ reason }),
+  }),
+  approveWork: (id) => apiRequest(`/api/orders/${id}/approve`, {
+    method: 'POST',
   }),
 };
 
@@ -149,13 +160,32 @@ export const usersAPI = {
 export const walletAPI = {
   getBalance: () => apiRequest('/api/wallet/balance'),
   getTransactions: () => apiRequest('/api/wallet/transactions'),
-  topup: (amount) => apiRequest('/api/wallet/topup', {
+  topup: (data) => apiRequest('/api/wallet/topup', {
     method: 'POST',
-    body: JSON.stringify({ amount }),
+    body: JSON.stringify(data),
   }),
   pay: (amount, orderId) => apiRequest('/api/wallet/pay', {
     method: 'POST',
     body: JSON.stringify({ amount, orderId }),
+  }),
+  // Admin endpoints
+  getPendingTopups: () => apiRequest('/api/wallet/pending-topups'),
+  getAllTransactions: () => apiRequest('/api/wallet/all-transactions'),
+  reviewTopup: (id, action) => apiRequest(`/api/wallet/topup/${id}/review`, {
+    method: 'PATCH',
+    body: JSON.stringify({ action }),
+  }),
+};
+
+// Upload API
+export const uploadAPI = {
+  single: (formData) => apiRequest('/api/upload/single', {
+    method: 'POST',
+    body: formData,
+  }),
+  multiple: (formData) => apiRequest('/api/upload/multiple', {
+    method: 'POST',
+    body: formData,
   }),
 };
 
@@ -198,7 +228,28 @@ export const authAPI = {
     method: 'POST',
     body: JSON.stringify(data),
   }),
+  createUser: (data) => apiRequest('/api/auth/create-user', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  }),
   getMe: () => apiRequest('/api/auth/me'),
+};
+
+// Notifications API
+export const notificationsAPI = {
+  getAll: async () => {
+    const response = await apiRequest('/api/notifications');
+    return response;
+  },
+  markAsRead: (id) => apiRequest(`/api/notifications/${id}/read`, {
+    method: 'PATCH',
+  }),
+  markAllAsRead: () => apiRequest('/api/notifications/mark-all-read', {
+    method: 'PATCH',
+  }),
+  delete: (id) => apiRequest(`/api/notifications/${id}`, {
+    method: 'DELETE',
+  }),
 };
 
 export default apiRequest;

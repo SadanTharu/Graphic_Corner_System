@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Palette, Video, Box, Sparkles, Check, Star } from 'lucide-react';
+import { ArrowRight, Palette, Video, Box, Sparkles, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { packagesAPI } from '../../utils/api';
 
@@ -23,21 +23,6 @@ const Landing = () => {
     { icon: Video, title: 'Video Editing', desc: 'Reels, YouTube videos, and thumbnails' },
     { icon: Box, title: '3D Rendering', desc: 'Product visualization and animations' },
     { icon: Sparkles, title: 'AI Services', desc: 'AI-generated content and images' }
-  ];
-
-  const testimonials = [
-    {
-      name: 'Kasun Perera',
-      role: 'Business Owner',
-      rating: 5,
-      text: 'Excellent service! My logo design exceeded expectations.'
-    },
-    {
-      name: 'Dilini Jayawardena',
-      role: 'Content Creator',
-      rating: 5,
-      text: 'Fast delivery and professional video editing. Highly recommended!'
-    }
   ];
 
   return (
@@ -163,34 +148,6 @@ const Landing = () => {
         </div>
       </section>
       )}
-
-      {/* Testimonials */}
-      <section className="py-20 bg-darker">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">
-              What Our Clients Say
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            {testimonials.map((testimonial, index) => (
-              <div key={index} className="card">
-                <div className="flex items-center mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} size={20} className="text-yellow-500 fill-yellow-500" />
-                  ))}
-                </div>
-                <p className="text-textGray mb-4 italic">"{testimonial.text}"</p>
-                <div>
-                  <p className="text-white font-semibold">{testimonial.name}</p>
-                  <p className="text-textGray text-sm">{testimonial.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-primary to-red-700">

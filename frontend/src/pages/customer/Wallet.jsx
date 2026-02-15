@@ -195,7 +195,7 @@ const Wallet = () => {
           <p className="text-textGray text-sm mb-2">Total Credits</p>
           <p className="text-2xl font-bold text-green-500">
             LKR {transactions
-              .filter(t => t.type === 'credit')
+              .filter(t => t.type === 'topup' || t.type === 'refund')
               .reduce((sum, t) => sum + t.amount, 0)
               .toLocaleString()}
           </p>
@@ -204,7 +204,7 @@ const Wallet = () => {
           <p className="text-textGray text-sm mb-2">Total Debits</p>
           <p className="text-2xl font-bold text-red-500">
             LKR {transactions
-              .filter(t => t.type === 'debit')
+              .filter(t => t.type === 'payment')
               .reduce((sum, t) => sum + t.amount, 0)
               .toLocaleString()}
           </p>
@@ -221,18 +221,18 @@ const Wallet = () => {
         <div className="space-y-3">
           {transactions.map((transaction) => (
             <div
-              key={transaction.id}
+              key={transaction._id}
               className="flex items-center justify-between p-4 bg-darker rounded-lg hover:bg-gray-800 transition-colors"
             >
               <div className="flex items-center space-x-4">
                 <div
                   className={`p-3 rounded-full ${
-                    transaction.type === 'credit'
+                    transaction.type === 'topup' || transaction.type === 'refund'
                       ? 'bg-green-500/20'
                       : 'bg-red-500/20'
                   }`}
                 >
-                  {transaction.type === 'credit' ? (
+                  {transaction.type === 'topup' || transaction.type === 'refund' ? (
                     <ArrowDownCircle className="w-5 h-5 text-green-500" />
                   ) : (
                     <ArrowUpCircle className="w-5 h-5 text-red-500" />
@@ -246,10 +246,10 @@ const Wallet = () => {
               <div className="text-right">
                 <p
                   className={`font-bold text-lg ${
-                    transaction.type === 'credit' ? 'text-green-500' : 'text-red-500'
+                    transaction.type === 'topup' || transaction.type === 'refund' ? 'text-green-500' : 'text-red-500'
                   }`}
                 >
-                  {transaction.type === 'credit' ? '+' : '-'} LKR{' '}
+                  {transaction.type === 'topup' || transaction.type === 'refund' ? '+' : '-'} LKR{' '}
                   {transaction.amount.toLocaleString()}
                 </p>
                 <span className={`text-xs px-2 py-1 rounded capitalize ${

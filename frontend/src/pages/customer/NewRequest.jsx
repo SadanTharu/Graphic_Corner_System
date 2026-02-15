@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { servicesAPI } from '../../utils/api';
-import { packages } from '../../data';
+import { servicesAPI, packagesAPI, ordersAPI } from '../../utils/api';
 import { useCart } from '../../context/CartContext';
 import { Palette, Video, Box, Sparkles, Check, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -8,6 +7,7 @@ import toast from 'react-hot-toast';
 const NewRequest = () => {
   const [selectedTab, setSelectedTab] = useState('services');
   const [services, setServices] = useState([]);
+  const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const { addToCart, cart } = useCart();
 
@@ -27,6 +27,7 @@ const NewRequest = () => {
 
   useEffect(() => {
     fetchServices();
+    fetchPackages();
   }, []);
 
   const fetchServices = async () => {
@@ -42,9 +43,55 @@ const NewRequest = () => {
     }
   };
 
+  const fetchPackages = async () => {
+    try {
+      const data = await packagesAPI.getAll();
+      setPackages(data.filter(pkg => pkg.isActive));
+    } catch (error) {
+      console.error('Error fetching packages:', error);
+    }
+  };
+
   const handleAddService = (service) => {
     addToCart(service);
     toast.success(`${service.name} added to cart!`);
+  };
+
+  const handleSubmitRequest = async () => {
+    if (cart.length === 0) {
+      toast.error('Your cart is empty');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const orderPromises = cart.map(item => 
+        ordersAPI.create({
+          service: item.serviceId,
+          totalAmount: item.price,
+          requirements: 'Service request from cart'
+        })
+      );
+
+      await Promise.all(orderPromises);
+      
+      // Clear cart after successful submission
+      cart.forEach(item => {
+        const cartFromStorage = JSON.parse(localStorage.getItem('cart') || '[]');
+        const updatedCart = cartFromStorage.filter(c => c.id !== item.id);
+        localStorage.setItem('cart', JSON.stringify(updatedCart));
+      });
+      
+      toast.success(`${cart.length} order(s) submitted successfully! Awaiting admin approval.`);
+      
+      // Refresh the page to update cart
+      window.location.reload();
+    } catch (error) {
+      console.error('Error submitting request:', error);
+      toast.error('Failed to submit request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isInCart = (serviceId) => {
@@ -170,15 +217,27 @@ const NewRequest = () => {
 
       {/* Packages Grid */}
       {selectedTab === 'packages' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {packages.map((pkg) => (
-            <div
-              key={pkg.id}
-              className={`card relative overflow-hidden ${
-                pkg.popular ? 'border-2 border-primary' : ''
-              }`}
-            >
-              {pkg.popular && (
+        <>
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <Loader2 className="w-12 h-12 text-primary animate-spin" />
+            </div>
+          ) : packages.length === 0 ? (
+            <div className="card text-center py-12">
+              <Box className="w-16 h-16 text-textGray mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-white mb-2">No Packages Available</h3>
+              <p className="text-textGray">Please check back later for available packages.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {packages.map((pkg) => (
+              <div
+                key={pkg._id}
+                className={`card relative overflow-hidden ${
+                  pkg.popular ? 'border-2 border-primary' : ''
+                }`}
+              >
+                {pkg.popular && (
                 <div className="absolute top-0 right-0 bg-primary text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                   POPULAR
                 </div>
@@ -213,9 +272,11 @@ const NewRequest = () => {
               >
                 Subscribe Now
               </button>
+              </div>
+            ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
 
       {/* Cart Summary */}
@@ -227,7 +288,7 @@ const NewRequest = () => {
               <div key={item.id} className="flex justify-between text-sm">
                 <span className="text-white">{item.serviceName}</span>
                 <span className="text-primary font-semibold">
-                  LKR {item.price.toLocaleString()}
+                  LKR {(item.price || 0).toLocaleString()}
                 </span>
               </div>
             ))}
@@ -236,15 +297,23 @@ const NewRequest = () => {
             <div className="flex justify-between">
               <span className="text-white font-bold">Total:</span>
               <span className="text-primary font-bold text-xl">
-                LKR {cart.reduce((sum, item) => sum + item.price, 0).toLocaleString()}
+                LKR {cart.reduce((sum, item) => sum + (item.price || 0), 0).toLocaleString()}
               </span>
             </div>
           </div>
           <button
-            onClick={() => toast.success('Request submitted! We will contact you soon.')}
-            className="w-full btn-primary"
+            onClick={handleSubmitRequest}
+            disabled={loading || cart.length === 0}
+            className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
           >
-            Submit Request
+            {loading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Submitting...</span>
+              </>
+            ) : (
+              <span>Submit Request</span>
+            )}
           </button>
         </div>
       )}

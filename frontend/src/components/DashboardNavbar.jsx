@@ -1,6 +1,7 @@
-import { Bell, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import NotificationPanel from './NotificationPanel';
 import toast from 'react-hot-toast';
 
 const DashboardNavbar = () => {
@@ -34,10 +35,7 @@ const DashboardNavbar = () => {
         {/* Actions */}
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <button className="relative p-2 text-textGray hover:text-white transition-colors">
-            <Bell size={20} />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
-          </button>
+          <NotificationPanel />
 
           {/* Logout */}
           <button

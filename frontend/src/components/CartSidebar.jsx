@@ -64,7 +64,7 @@ const CartSidebar = ({ isOpen, onClose }) => {
                         {item.serviceName}
                       </h3>
                       <p className="text-primary font-semibold">
-                        LKR {item.price.toLocaleString()}
+                        LKR {(item.price || 0).toLocaleString()}
                       </p>
                       <p className="text-textGray text-xs mt-1">
                         Added {new Date(item.addedAt).toLocaleDateString()}

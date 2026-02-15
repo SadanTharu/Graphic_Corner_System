@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
+const { auth, isAdmin } = require('../middleware/auth');
 
 // Register
 router.post(
@@ -126,5 +127,52 @@ router.get('/me', async (req, res) => {
     res.status(401).json({ message: 'Invalid token' });
   }
 });
+
+// Admin create user (team/admin)
+router.post(
+  '/create-user',
+  auth,
+  isAdmin,
+  [
+    body('name').notEmpty().withMessage('Name is required'),
+    body('email').isEmail().withMessage('Valid email is required'),
+    body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+    body('role').isIn(['team', 'admin', 'customer']).withMessage('Valid role is required')
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { name, email, password, phone, role, specialty } = req.body;
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ message: 'User already exists with this email' });
+      }
+
+      const user = new User({
+        name,
+        email,
+        password,
+        phone,
+        role,
+        specialty
+      });
+
+      await user.save();
+
+      res.status(201).json({
+        message: `${role} user created successfully`,
+        user: user.toJSON()
+      });
+    } catch (error) {
+      console.error('Create user error:', error);
+      res.status(500).json({ message: 'Server error' });
+    }
+  }
+);
 
 module.exports = router;

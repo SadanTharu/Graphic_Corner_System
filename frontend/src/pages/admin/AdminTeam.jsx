@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { usersAPI, tasksAPI, ordersAPI } from '../../utils/api';
-import { UserPlus, Mail, Phone, Loader2 } from 'lucide-react';
+import { usersAPI, tasksAPI, ordersAPI, authAPI } from '../../utils/api';
+import { UserPlus, Mail, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminTeam = () => {
@@ -9,6 +9,9 @@ const AdminTeam = () => {
   const [tasks, setTasks] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newMember, setNewMember] = useState({ name: '', email: '', password: '', specialty: '' });
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -16,7 +19,7 @@ const AdminTeam = () => {
 
   const fetchData = async () => {
     try {
-      setLoading(true);
+      if (users.length === 0) setLoading(true);
       const [usersData, tasksData, ordersData] = await Promise.all([
         usersAPI.getAll(),
         tasksAPI.getAll(),
@@ -42,12 +45,40 @@ const AdminTeam = () => {
     done: tasks.filter(t => t.status === 'done')
   };
 
-  const handleAssignTask = (taskId, teamMemberId) => {
-    toast.success('Task assigned successfully!');
+  const handleAssignTask = async (taskId, teamMemberId) => {
+    try {
+      await tasksAPI.update(taskId, { assignedTo: teamMemberId });
+      toast.success('Task assigned successfully!');
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to assign task');
+    }
   };
 
-  const handleAddTeamMember = () => {
-    toast.success('Add team member (Coming soon)');
+  const handleAddTeamMember = async () => {
+    if (!newMember.name || !newMember.email || !newMember.password) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    if (newMember.password.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+    setCreating(true);
+    try {
+      await authAPI.createUser({
+        ...newMember,
+        role: 'team'
+      });
+      toast.success('Team member created successfully!');
+      setShowAddModal(false);
+      setNewMember({ name: '', email: '', password: '', specialty: '' });
+      fetchData();
+    } catch (error) {
+      toast.error(error.message || 'Failed to create team member');
+    } finally {
+      setCreating(false);
+    }
   };
 
   if (loading) {
@@ -67,7 +98,7 @@ const AdminTeam = () => {
           <p className="text-textGray mt-2">Manage team members and task assignments</p>
         </div>
         <button
-          onClick={handleAddTeamMember}
+          onClick={() => setShowAddModal(true)}
           className="btn-primary flex items-center space-x-2 mt-4 md:mt-0"
         >
           <UserPlus size={20} />
@@ -108,18 +139,19 @@ const AdminTeam = () => {
             </div>
             <div className="space-y-3">
               {kanbanColumns.todo.map(task => (
-                <div key={task.id} className="bg-lightGray p-4 rounded-lg">
+                <div key={task._id} className="bg-lightGray p-4 rounded-lg">
                   <h4 className="text-white font-medium text-sm mb-2">{task.title}</h4>
                   <p className="text-textGray text-xs mb-3">{task.description}</p>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-textGray">{task.dueDate}</span>
+                    <span className="text-textGray">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : ''}</span>
                     <select
-                      onChange={(e) => handleAssignTask(task.id, e.target.value)}
+                      onChange={(e) => handleAssignTask(task._id, e.target.value)}
                       className="bg-darker text-white text-xs px-2 py-1 rounded"
+                      defaultValue=""
                     >
-                      <option value="">Assign...</option>
+                      <option value="" disabled>Assign...</option>
                       {teamMembers.map(member => (
-                        <option key={member.id} value={member.id}>
+                        <option key={member._id} value={member._id}>
                           {member.name}
                         </option>
                       ))}
@@ -140,12 +172,12 @@ const AdminTeam = () => {
             </div>
             <div className="space-y-3">
               {kanbanColumns.in_progress.map(task => (
-                <div key={task.id} className="bg-lightGray p-4 rounded-lg border-l-4 border-blue-500">
+                <div key={task._id} className="bg-lightGray p-4 rounded-lg border-l-4 border-blue-500">
                   <h4 className="text-white font-medium text-sm mb-2">{task.title}</h4>
                   <p className="text-textGray text-xs mb-3">{task.description}</p>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-textGray">{task.dueDate}</span>
-                    <span className="text-blue-500">{task.assignedToName}</span>
+                    <span className="text-textGray">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : ''}</span>
+                    <span className="text-blue-500">{task.assignedTo?.name || 'Unassigned'}</span>
                   </div>
                 </div>
               ))}
@@ -162,12 +194,12 @@ const AdminTeam = () => {
             </div>
             <div className="space-y-3">
               {kanbanColumns.review.map(task => (
-                <div key={task.id} className="bg-lightGray p-4 rounded-lg border-l-4 border-yellow-500">
+                <div key={task._id} className="bg-lightGray p-4 rounded-lg border-l-4 border-yellow-500">
                   <h4 className="text-white font-medium text-sm mb-2">{task.title}</h4>
                   <p className="text-textGray text-xs mb-3">{task.description}</p>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-textGray">{task.dueDate}</span>
-                    <span className="text-yellow-500">{task.assignedToName}</span>
+                    <span className="text-textGray">{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : ''}</span>
+                    <span className="text-yellow-500">{task.assignedTo?.name || 'Unassigned'}</span>
                   </div>
                 </div>
               ))}
@@ -183,7 +215,18 @@ const AdminTeam = () => {
               </span>
             </div>
             <div className="text-center py-8">
-              <p className="text-textGray text-sm">No completed tasks</p>
+              {kanbanColumns.done.length === 0 ? (
+                <p className="text-textGray text-sm">No completed tasks</p>
+              ) : (
+                <div className="space-y-3">
+                  {kanbanColumns.done.map(task => (
+                    <div key={task._id} className="bg-lightGray p-4 rounded-lg border-l-4 border-green-500">
+                      <h4 className="text-white font-medium text-sm mb-2">{task.title}</h4>
+                      <p className="text-textGray text-xs">{task.assignedTo?.name || 'Unassigned'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -191,11 +234,15 @@ const AdminTeam = () => {
         /* Team Members View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {teamMembers.map(member => {
-            const memberTasks = tasks.filter(t => t.assignedTo === member.id);
-            const memberOrders = orders.filter(o => o.assignedTeam === member.id);
+            const memberTasks = tasks.filter(t => 
+              t.assignedTo?._id === member._id || t.assignedTo === member._id
+            );
+            const memberOrders = orders.filter(o => 
+              o.assignedTo?._id === member._id || o.assignedTo === member._id
+            );
 
             return (
-              <div key={member.id} className="card">
+              <div key={member._id} className="card">
                 <div className="flex items-center space-x-4 mb-4">
                   <img
                     src={member.avatar}
@@ -232,6 +279,70 @@ const AdminTeam = () => {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Add Team Member Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-lightGray rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-white">Add Team Member</h3>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-darker rounded-lg">
+                <X size={20} className="text-textGray" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="label">Full Name *</label>
+                <input
+                  type="text"
+                  value={newMember.name}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter full name"
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="label">Email *</label>
+                <input
+                  type="email"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Enter email address"
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="label">Password *</label>
+                <input
+                  type="password"
+                  value={newMember.password}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, password: e.target.value }))}
+                  placeholder="Min 6 characters"
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="label">Specialty</label>
+                <input
+                  type="text"
+                  value={newMember.specialty}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, specialty: e.target.value }))}
+                  placeholder="e.g. Graphic Design, Video Editing"
+                  className="input-field"
+                />
+              </div>
+            </div>
+            <div className="flex space-x-3 mt-6">
+              <button onClick={() => setShowAddModal(false)} className="flex-1 btn-secondary" disabled={creating}>
+                Cancel
+              </button>
+              <button onClick={handleAddTeamMember} className="flex-1 btn-primary" disabled={creating}>
+                {creating ? 'Creating...' : 'Add Member'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

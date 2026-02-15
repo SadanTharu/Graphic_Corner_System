@@ -22,9 +22,9 @@ export const CartProvider = ({ children }) => {
   const addToCart = (service, customPrice = null) => {
     const newItem = {
       id: Date.now(),
-      serviceId: service.id,
+      serviceId: service._id || service.id,
       serviceName: service.name,
-      price: customPrice || service.minPrice,
+      price: customPrice || service.priceRange?.min || service.minPrice || 0,
       addedAt: new Date().toISOString()
     };
 
@@ -66,7 +66,7 @@ export const CartProvider = ({ children }) => {
   };
 
   const getTotalAmount = () => {
-    return cart.reduce((total, item) => total + item.price, 0);
+    return cart.reduce((total, item) => total + (item.price || 0), 0);
   };
 
   const value = {

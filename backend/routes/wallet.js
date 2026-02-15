@@ -1,8 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { auth } = require('../middleware/auth');
+const { auth, isAdmin } = require('../middleware/auth');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
+const Notification = require('../models/Notification');
+
+// Helper function to create notification
+const createNotification = async (userId, type, title, message) => {
+  try {
+    const notification = new Notification({ user: userId, type, title, message });
+    await notification.save();
+  } catch (error) {
+    console.error('Error creating notification:', error);
+  }
+};
 
 // Get wallet balance
 router.get('/balance', auth, async (req, res) => {
@@ -110,6 +121,94 @@ router.post('/pay', auth, async (req, res) => {
       balance: user.walletBalance
     });
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all pending top-ups (Admin only)
+router.get('/pending-topups', auth, isAdmin, async (req, res) => {
+  try {
+    const pendingTopups = await Transaction.find({ type: 'topup', status: 'pending' })
+      .populate('user', 'name email avatar')
+      .sort({ createdAt: -1 });
+    
+    res.json({ transactions: pendingTopups });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all transactions (Admin only)
+router.get('/all-transactions', auth, isAdmin, async (req, res) => {
+  try {
+    const transactions = await Transaction.find()
+      .populate('user', 'name email avatar')
+      .populate('order', 'orderNumber')
+      .sort({ createdAt: -1 });
+    
+    res.json({ transactions });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Approve/Reject top-up (Admin only)
+router.patch('/topup/:id/review', auth, isAdmin, async (req, res) => {
+  try {
+    const { action } = req.body; // 'approve' or 'reject'
+    
+    const transaction = await Transaction.findById(req.params.id)
+      .populate('user', 'name email');
+
+    if (!transaction) {
+      return res.status(404).json({ message: 'Transaction not found' });
+    }
+
+    if (transaction.status !== 'pending') {
+      return res.status(400).json({ message: 'Transaction already processed' });
+    }
+
+    if (action === 'approve') {
+      transaction.status = 'completed';
+      await transaction.save();
+
+      // Credit wallet balance
+      await User.findByIdAndUpdate(transaction.user._id, {
+        $inc: { walletBalance: transaction.amount }
+      });
+
+      // Notify customer
+      await createNotification(
+        transaction.user._id,
+        'payment_verified',
+        'Top-up Approved! 💰',
+        `Your wallet top-up of LKR ${transaction.amount.toLocaleString()} has been approved and credited.`
+      );
+
+      const updatedUser = await User.findById(transaction.user._id);
+      res.json({ 
+        message: 'Top-up approved and balance credited', 
+        transaction,
+        newBalance: updatedUser.walletBalance
+      });
+    } else if (action === 'reject') {
+      transaction.status = 'failed';
+      await transaction.save();
+
+      // Notify customer
+      await createNotification(
+        transaction.user._id,
+        'payment_rejected',
+        'Top-up Rejected ❌',
+        `Your wallet top-up of LKR ${transaction.amount.toLocaleString()} was rejected. Please try again with a valid payment slip.`
+      );
+
+      res.json({ message: 'Top-up rejected', transaction });
+    } else {
+      return res.status(400).json({ message: 'Invalid action. Use "approve" or "reject"' });
+    }
+  } catch (error) {
+    console.error('Error reviewing top-up:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

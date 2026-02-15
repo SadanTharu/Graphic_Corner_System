@@ -24,14 +24,14 @@ router.get('/', async (req, res) => {
 // Get package by ID
 router.get('/:id', async (req, res) => {
   try {
-    const package = await Package.findById(req.params.id)
+    const pkg = await Package.findById(req.params.id)
       .populate('servicesIncluded', 'name category priceRange');
     
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
-    res.json({ package });
+    res.json({ package: pkg });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -40,9 +40,9 @@ router.get('/:id', async (req, res) => {
 // Create package (Admin only)
 router.post('/', auth, isAdmin, async (req, res) => {
   try {
-    const package = new Package(req.body);
-    await package.save();
-    res.status(201).json({ message: 'Package created successfully', package });
+    const pkg = new Package(req.body);
+    await pkg.save();
+    res.status(201).json({ message: 'Package created successfully', package: pkg });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -51,17 +51,17 @@ router.post('/', auth, isAdmin, async (req, res) => {
 // Update package (Admin only)
 router.put('/:id', auth, isAdmin, async (req, res) => {
   try {
-    const package = await Package.findByIdAndUpdate(
+    const pkg = await Package.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
-    res.json({ message: 'Package updated successfully', package });
+    res.json({ message: 'Package updated successfully', package: pkg });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -70,13 +70,13 @@ router.put('/:id', auth, isAdmin, async (req, res) => {
 // Delete package (Admin only - soft delete)
 router.delete('/:id', auth, isAdmin, async (req, res) => {
   try {
-    const package = await Package.findByIdAndUpdate(
+    const pkg = await Package.findByIdAndUpdate(
       req.params.id,
       { isActive: false },
       { new: true }
     );
 
-    if (!package) {
+    if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });
     }
 
