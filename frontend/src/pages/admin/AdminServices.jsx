@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { servicesAPI } from '../../utils/api';
-import { Plus, Edit2, Trash2, Search, Loader2, X } from 'lucide-react';
+import { servicesAPI, uploadAPI } from '../../utils/api';
+import { Plus, Edit2, Trash2, Search, Loader2, X, Upload, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const AdminServices = () => {
@@ -10,6 +10,7 @@ const AdminServices = () => {
   const [filterCategory, setFilterCategory] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     category: 'graphics',
@@ -17,6 +18,9 @@ const AdminServices = () => {
     minPrice: '',
     maxPrice: '',
     deliveryTime: '',
+    mediaUrl: '',
+    mediaType: '',
+    cloudinaryId: '',
   });
 
   const categories = ['All', 'graphics', 'video', '3d', 'ai'];
@@ -60,6 +64,9 @@ const AdminServices = () => {
       minPrice: '',
       maxPrice: '',
       deliveryTime: '',
+      mediaUrl: '',
+      mediaType: '',
+      cloudinaryId: '',
     });
     setEditingService(null);
   };
@@ -73,6 +80,9 @@ const AdminServices = () => {
       minPrice: service.priceRange?.min || '',
       maxPrice: service.priceRange?.max || '',
       deliveryTime: service.deliveryTime,
+      mediaUrl: service.mediaUrl || '',
+      mediaType: service.mediaType || '',
+      cloudinaryId: service.cloudinaryId || '',
     });
     setIsModalOpen(true);
   };
@@ -99,7 +109,10 @@ const AdminServices = () => {
           min: parseInt(formData.minPrice),
           max: parseInt(formData.maxPrice)
         },
-        deliveryTime: formData.deliveryTime
+        deliveryTime: formData.deliveryTime,
+        mediaUrl: formData.mediaUrl,
+        mediaType: formData.mediaType,
+        cloudinaryId: formData.cloudinaryId,
       };
 
       if (editingService) {
@@ -131,7 +144,67 @@ const AdminServices = () => {
       toast.error('Failed to delete service');
     }
   };
+  const handleMediaUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
+    // Determine media type
+    let mediaType = '';
+    if (file.type.startsWith('image/gif')) {
+      mediaType = 'gif';
+    } else if (file.type.startsWith('image/')) {
+      mediaType = 'image';
+    } else if (file.type.startsWith('video/')) {
+      mediaType = 'video';
+    } else {
+      toast.error('Please select an image, GIF, or video file');
+      return;
+    }
+
+    // Validate file size (max 50MB for video, 10MB for images)
+    const maxSize = mediaType === 'video' ? 50 * 1024 * 1024 : 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error(`File must be under ${mediaType === 'video' ? '50MB' : '10MB'}`);
+      return;
+    }
+
+    try {
+      setUploading(true);
+      const fd = new FormData();
+      fd.append('file', file);
+      const result = await uploadAPI.single(fd);
+      const uploaded = result.file || result;
+      setFormData(prev => ({
+        ...prev,
+        mediaUrl: uploaded.url || uploaded.secure_url || '',
+        mediaType,
+        cloudinaryId: uploaded.publicId || uploaded.public_id || '',
+      }));
+      toast.success('Media uploaded successfully');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Failed to upload media');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const renderMediaPreview = (url, type, className = 'w-full h-full object-cover') => {
+    if (!url) return null;
+    if (type === 'video') {
+      return (
+        <video
+          src={url}
+          className={className}
+          autoPlay
+          loop
+          muted
+          playsInline
+        />
+      );
+    }
+    return <img src={url} alt="" className={className} />;
+  };
   if (loading) {
     return (
       <div className="flex justify-center items-center h-96">
@@ -191,7 +264,24 @@ const AdminServices = () => {
       {/* Services Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredServices.map((service) => (
-          <div key={service._id} className="card">
+          <div key={service._id} className="card overflow-hidden">
+            {/* Media Preview */}
+            {service.mediaUrl && (
+              <div className="relative h-40 -mx-6 -mt-6 mb-4 overflow-hidden bg-darker">
+                {renderMediaPreview(service.mediaUrl, service.mediaType)}
+                {service.mediaType === 'video' && (
+                  <div className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1">
+                    <Play size={12} />
+                  </div>
+                )}
+                {service.mediaType === 'gif' && (
+                  <div className="absolute top-2 right-2 bg-black/70 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                    GIF
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex items-start justify-between mb-4">
               <span className="px-2 py-1 bg-primary/20 text-primary text-xs rounded">
                 {categoryLabels[service.category]}
@@ -372,6 +462,69 @@ const AdminServices = () => {
                   placeholder="e.g., 3-5 days"
                   required
                 />
+              </div>
+
+              {/* Media Upload */}
+              <div>
+                <label className="block text-textGray text-sm font-medium mb-2">
+                  Service Media (Image / GIF / Video)
+                </label>
+                {formData.mediaUrl ? (
+                  <div className="relative rounded-lg overflow-hidden border border-gray-700">
+                    <div className="h-48">
+                      {formData.mediaType === 'video' ? (
+                        <video
+                          src={formData.mediaUrl}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <img
+                          src={formData.mediaUrl}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                    <div className="absolute top-2 right-2 flex items-center space-x-2">
+                      <span className="bg-black/70 text-white text-xs px-2 py-1 rounded-full uppercase font-bold">
+                        {formData.mediaType}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, mediaUrl: '', mediaType: '', cloudinaryId: '' }))}
+                        className="bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-700 rounded-lg cursor-pointer hover:border-primary transition-colors">
+                    {uploading ? (
+                      <div className="text-center">
+                        <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-2" />
+                        <p className="text-textGray text-sm">Uploading...</p>
+                      </div>
+                    ) : (
+                      <div className="text-center">
+                        <Upload size={28} className="mx-auto text-textGray mb-2" />
+                        <p className="text-textGray text-sm">Click to upload</p>
+                        <p className="text-textGray text-xs mt-1">Image, GIF, or Video (MP4)</p>
+                      </div>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*,video/mp4,video/webm"
+                      onChange={handleMediaUpload}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                  </label>
+                )}
               </div>
 
               <div className="flex space-x-3 pt-4">

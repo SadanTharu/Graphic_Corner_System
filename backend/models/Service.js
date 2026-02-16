@@ -35,6 +35,19 @@ const serviceSchema = new mongoose.Schema({
   image: {
     type: String
   },
+  mediaUrl: {
+    type: String,
+    default: ''
+  },
+  mediaType: {
+    type: String,
+    enum: ['image', 'gif', 'video', ''],
+    default: ''
+  },
+  cloudinaryId: {
+    type: String,
+    default: ''
+  },
   isActive: {
     type: Boolean,
     default: true

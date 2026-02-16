@@ -117,8 +117,40 @@ const Services = () => {
               return (
                 <div
                   key={service._id}
-                  className="card hover:scale-105 transform transition-all duration-300 group"
+                  className="card hover:scale-105 transform transition-all duration-300 group overflow-hidden"
                 >
+                  {/* Service Media */}
+                  {service.mediaUrl && (
+                    <div className="relative h-44 -mx-6 -mt-6 mb-4 overflow-hidden bg-darker">
+                      {service.mediaType === 'video' ? (
+                        <video
+                          src={service.mediaUrl}
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <img
+                          src={service.mediaUrl}
+                          alt={service.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                      {service.mediaType === 'video' && (
+                        <div className="absolute top-2 right-2 bg-black/70 text-white rounded-full p-1">
+                          <Video size={12} />
+                        </div>
+                      )}
+                      {service.mediaType === 'gif' && (
+                        <div className="absolute top-2 right-2 bg-black/70 text-white rounded-full px-2 py-0.5 text-xs font-bold">
+                          GIF
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex items-start justify-between mb-4">
                     <div
                       className={`p-3 rounded-lg ${
