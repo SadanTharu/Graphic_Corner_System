@@ -274,21 +274,20 @@ const AdminBanners = () => {
 
               {/* Status & Actions */}
               <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-800">
-                <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${
-                  banner.isActive ? 'bg-green-500/10 text-green-500' : 'bg-gray-500/10 text-gray-400'
-                }`}>
+                <button
+                  onClick={() => handleToggle(banner._id || banner.id)}
+                  className={`inline-flex items-center space-x-1 px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-colors ${
+                    banner.isActive
+                      ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
+                      : 'bg-gray-500/10 text-gray-400 hover:bg-gray-500/20'
+                  }`}
+                  title={banner.isActive ? 'Click to deactivate' : 'Click to activate'}
+                >
                   {banner.isActive ? <Eye size={14} /> : <EyeOff size={14} />}
                   <span>{banner.isActive ? 'Active' : 'Inactive'}</span>
-                </span>
+                </button>
 
                 <div className="flex items-center space-x-2">
-                  <button
-                    onClick={() => handleToggle(banner._id || banner.id)}
-                    className="p-2 rounded-lg hover:bg-darker text-textGray hover:text-white transition-colors"
-                    title={banner.isActive ? 'Deactivate' : 'Activate'}
-                  >
-                    {banner.isActive ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
                   <button
                     onClick={() => openEditModal(banner)}
                     className="p-2 rounded-lg hover:bg-darker text-textGray hover:text-primary transition-colors"
