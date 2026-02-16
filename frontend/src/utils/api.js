@@ -155,6 +155,10 @@ export const usersAPI = {
     method: 'PUT',
     body: JSON.stringify(data),
   }),
+  changePassword: (id, data) => apiRequest(`/api/users/${id}/change-password`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  }),
   delete: (id) => apiRequest(`/api/users/${id}`, {
     method: 'DELETE',
   }),
@@ -237,6 +241,14 @@ export const authAPI = {
     body: JSON.stringify(data),
   }),
   getMe: () => apiRequest('/api/auth/me'),
+  forgotPassword: (email) => apiRequest('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  }),
+  resetPassword: (token, password) => apiRequest(`/api/auth/reset-password/${token}`, {
+    method: 'POST',
+    body: JSON.stringify({ password }),
+  }),
 };
 
 // Notifications API

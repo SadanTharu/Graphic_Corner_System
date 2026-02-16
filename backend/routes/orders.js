@@ -5,6 +5,7 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Transaction = require('../models/Transaction');
 const Notification = require('../models/Notification');
+const { sendTaskCompletedEmail, sendOrderAssignedEmail } = require('../config/mailjet');
 
 // Helper function to create notification
 const createNotification = async (userId, type, title, message, orderId = null) => {
@@ -203,6 +204,14 @@ router.patch('/:id/status', auth, async (req, res) => {
           `Your order for ${order.service.name} is complete! Final files are ready for download.`,
           order._id
         );
+
+        // Send completion email to customer
+        const customer = await User.findById(order.customer._id);
+        if (customer && customer.email) {
+          sendTaskCompletedEmail(customer, order.service.name, order.orderNumber)
+            .then(r => { if (!r.success) console.error('Completion email failed:', r.error); })
+            .catch(err => console.error('Completion email error:', err.message));
+        }
       }
     }
 
@@ -215,6 +224,14 @@ router.patch('/:id/status', auth, async (req, res) => {
         `You have been assigned to work on ${order.service.name}.`,
         order._id
       );
+
+      // Send email to the assigned team member
+      const teamMember = await User.findById(assignedTo);
+      if (teamMember && teamMember.email) {
+        sendOrderAssignedEmail(teamMember, order.service.name, order.orderNumber)
+          .then(r => { if (!r.success) console.error('Order assign email failed:', r.error); })
+          .catch(err => console.error('Order assign email error:', err.message));
+      }
     }
     
     // Populate after save

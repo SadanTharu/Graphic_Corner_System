@@ -13,7 +13,8 @@ import {
   CreditCard,
   Menu,
   X,
-  Image
+  Image,
+  UserCircle
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -26,7 +27,8 @@ const Sidebar = () => {
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'New Request', path: '/dashboard/new-request', icon: FileText },
     { name: 'My Orders', path: '/dashboard/my-orders', icon: Package },
-    { name: 'Wallet', path: '/dashboard/wallet', icon: Wallet }
+    { name: 'Wallet', path: '/dashboard/wallet', icon: Wallet },
+    { name: 'Profile', path: '/dashboard/profile', icon: UserCircle }
   ];
 
   const adminLinks = [
@@ -37,12 +39,14 @@ const Sidebar = () => {
     { name: 'Payments', path: '/admin/payments', icon: CreditCard },
     { name: 'Finance', path: '/admin/finance', icon: BarChart3 },
     { name: 'Team', path: '/admin/team', icon: Users },
-    { name: 'Banners', path: '/admin/banners', icon: Image }
+    { name: 'Banners', path: '/admin/banners', icon: Image },
+    { name: 'Profile', path: '/admin/profile', icon: UserCircle }
   ];
 
   const teamLinks = [
     { name: 'Dashboard', path: '/team/dashboard', icon: LayoutDashboard },
-    { name: 'My Tasks', path: '/team/tasks', icon: ListChecks }
+    { name: 'My Tasks', path: '/team/tasks', icon: ListChecks },
+    { name: 'Profile', path: '/team/profile', icon: UserCircle }
   ];
 
   const getLinks = () => {

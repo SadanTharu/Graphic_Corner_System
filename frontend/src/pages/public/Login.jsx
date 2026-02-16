@@ -130,6 +130,12 @@ const Login = () => {
               <span>Sign In</span>
             )}
           </button>
+
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-primary hover:text-red-400 text-sm font-medium">
+              Forgot Password?
+            </Link>
+          </div>
         </form>
 
         {/* Footer */}

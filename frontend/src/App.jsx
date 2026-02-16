@@ -14,6 +14,8 @@ import Landing from './pages/public/Landing';
 import Services from './pages/public/Services';
 import Login from './pages/public/Login';
 import Register from './pages/public/Register';
+import ForgotPassword from './pages/public/ForgotPassword';
+import ResetPassword from './pages/public/ResetPassword';
 
 // Customer Pages
 import CustomerDashboard from './pages/customer/CustomerDashboard';
@@ -35,6 +37,9 @@ import AdminBanners from './pages/admin/AdminBanners';
 import TeamDashboard from './pages/team/TeamDashboard';
 import TeamTasks from './pages/team/TeamTasks';
 
+// Shared Pages
+import Profile from './pages/shared/Profile';
+
 function App() {
   return (
     <AuthProvider>
@@ -49,6 +54,8 @@ function App() {
                 <Route path="/services" element={<Services />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:token" element={<ResetPassword />} />
               </Route>
 
               {/* Customer Routes */}
@@ -64,6 +71,7 @@ function App() {
                 <Route path="new-request" element={<NewRequest />} />
                 <Route path="my-orders" element={<MyOrders />} />
                 <Route path="wallet" element={<Wallet />} />
+                <Route path="profile" element={<Profile />} />
               </Route>
 
               {/* Admin Routes */}
@@ -84,6 +92,7 @@ function App() {
                 <Route path="finance" element={<AdminFinance />} />
                 <Route path="team" element={<AdminTeam />} />
                 <Route path="banners" element={<AdminBanners />} />
+                <Route path="profile" element={<Profile />} />
               </Route>
 
               {/* Team Routes */}
@@ -98,6 +107,7 @@ function App() {
                 <Route index element={<Navigate to="/team/dashboard" replace />} />
                 <Route path="dashboard" element={<TeamDashboard />} />
                 <Route path="tasks" element={<TeamTasks />} />
+                <Route path="profile" element={<Profile />} />
               </Route>
 
               {/* 404 Catch-all */}

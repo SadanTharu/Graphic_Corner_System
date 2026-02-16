@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const { auth, isAdmin, isTeam } = require('../middleware/auth');
 const Task = require('../models/Task');
+const User = require('../models/User');
+const { sendTaskAssignedEmail } = require('../config/mailjet');
 
 // Get all tasks
 router.get('/', auth, async (req, res) => {
@@ -53,6 +55,14 @@ router.post('/', auth, isAdmin, async (req, res) => {
     await task.save();
     await task.populate('assignedTo order');
 
+    // Send email to assigned team member
+    if (task.assignedTo && task.assignedTo.email) {
+      const orderInfo = task.order ? task.order.orderNumber : null;
+      sendTaskAssignedEmail(task.assignedTo, task.title, orderInfo)
+        .then(r => { if (!r.success) console.error('Task assign email failed:', r.error); })
+        .catch(err => console.error('Task assign email error:', err.message));
+    }
+
     res.status(201).json({ message: 'Task created successfully', task });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -77,6 +87,8 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    const oldAssignedTo = task.assignedTo ? task.assignedTo.toString() : null;
+
     Object.assign(task, req.body);
     
     if (status === 'done' && !task.completedAt) {
@@ -85,6 +97,15 @@ router.put('/:id', auth, async (req, res) => {
 
     await task.save();
     await task.populate('assignedTo order');
+
+    // Send email if task was reassigned to a new team member
+    const newAssignedTo = task.assignedTo ? task.assignedTo._id?.toString() : null;
+    if (newAssignedTo && newAssignedTo !== oldAssignedTo && task.assignedTo.email) {
+      const orderInfo = task.order ? task.order.orderNumber : null;
+      sendTaskAssignedEmail(task.assignedTo, task.title, orderInfo)
+        .then(r => { if (!r.success) console.error('Task reassign email failed:', r.error); })
+        .catch(err => console.error('Task reassign email error:', err.message));
+    }
 
     res.json({ message: 'Task updated successfully', task });
   } catch (error) {

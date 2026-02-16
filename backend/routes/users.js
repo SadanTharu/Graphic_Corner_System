@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const { auth, isAdmin } = require('../middleware/auth');
 const User = require('../models/User');
 
@@ -38,19 +39,25 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
-// Update user
+// Update user profile
 router.put('/:id', auth, async (req, res) => {
   try {
-    const { name, phone, specialty } = req.body;
+    const { name, phone, specialty, avatar } = req.body;
     
     // Users can only update their own profile unless they're admin
     if (req.params.id !== req.userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Access denied' });
     }
 
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (specialty !== undefined) updateData.specialty = specialty;
+    if (avatar !== undefined) updateData.avatar = avatar;
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { name, phone, specialty },
+      updateData,
       { new: true, runValidators: true }
     ).select('-password');
 
@@ -58,8 +65,47 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ message: 'User updated successfully', user });
+    res.json({ message: 'Profile updated successfully', user });
   } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Change password (authenticated)
+router.put('/:id/change-password', auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    // Users can only change their own password
+    if (req.params.id !== req.userId.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Verify current password
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
