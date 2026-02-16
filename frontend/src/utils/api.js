@@ -256,4 +256,9 @@ export const notificationsAPI = {
   }),
 };
 
+// Analytics API
+export const analyticsAPI = {
+  getDashboard: () => apiRequest('/api/analytics'),
+};
+
 export default apiRequest;
