@@ -12,7 +12,8 @@ import {
   ShoppingBag,
   CreditCard,
   Menu,
-  X
+  X,
+  Image
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,7 +36,8 @@ const Sidebar = () => {
     { name: 'Packages', path: '/admin/packages', icon: Package },
     { name: 'Payments', path: '/admin/payments', icon: CreditCard },
     { name: 'Finance', path: '/admin/finance', icon: BarChart3 },
-    { name: 'Team', path: '/admin/team', icon: Users }
+    { name: 'Team', path: '/admin/team', icon: Users },
+    { name: 'Banners', path: '/admin/banners', icon: Image }
   ];
 
   const teamLinks = [
@@ -70,9 +72,7 @@ const Sidebar = () => {
         {/* Logo Section */}
         <div className="p-6 border-b border-gray-800">
           <Link to="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">GC</span>
-            </div>
+            <img src="/logo.png" alt="Graphic Corner" className="w-10 h-10 rounded-lg object-contain" />
             <div>
               <h3 className="text-white font-bold">Graphic Corner</h3>
               <p className="text-xs text-textGray capitalize">{user?.role} Panel</p>

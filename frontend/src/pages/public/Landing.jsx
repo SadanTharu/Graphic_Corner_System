@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Palette, Video, Box, Sparkles, Check } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { packagesAPI } from '../../utils/api';
+import { ArrowRight, Palette, Video, Box, Sparkles, Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { packagesAPI, bannersAPI, settingsAPI } from '../../utils/api';
 
 const Landing = () => {
   const [packages, setPackages] = useState([]);
+  const [banners, setBanners] = useState([]);
+  const [currentBanner, setCurrentBanner] = useState(0);
+  const [heroTextPosition, setHeroTextPosition] = useState('below');
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -15,8 +18,45 @@ const Landing = () => {
         console.error('Error fetching packages:', error);
       }
     };
+    const fetchBanners = async () => {
+      try {
+        const data = await bannersAPI.getActive();
+        setBanners(data);
+      } catch (error) {
+        console.error('Error fetching banners:', error);
+      }
+    };
+    const fetchHeroPosition = async () => {
+      try {
+        const result = await settingsAPI.get('heroTextPosition');
+        if (result.value) {
+          setHeroTextPosition(result.value);
+        }
+      } catch (error) {
+        console.error('Error fetching hero text position:', error);
+      }
+    };
     fetchPackages();
+    fetchBanners();
+    fetchHeroPosition();
   }, []);
+
+  // Auto-advance banner
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentBanner(prev => (prev + 1) % banners.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [banners.length]);
+
+  const prevBanner = useCallback(() => {
+    setCurrentBanner(prev => (prev - 1 + banners.length) % banners.length);
+  }, [banners.length]);
+
+  const nextBanner = useCallback(() => {
+    setCurrentBanner(prev => (prev + 1) % banners.length);
+  }, [banners.length]);
 
   const features = [
     { icon: Palette, title: 'Graphics Design', desc: 'Logos, flyers, and social media posts' },
@@ -27,7 +67,112 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* Banner Carousel */}
+      {banners.length > 0 && (
+        <section className="relative w-full overflow-hidden bg-darker">
+          <div
+            className="flex transition-transform duration-700 ease-in-out"
+            style={{ transform: `translateX(-${currentBanner * 100}%)` }}
+          >
+            {banners.map((banner) => (
+                <div key={banner._id || banner.id} className="w-full flex-shrink-0 relative">
+                  {banner.link && banner.link.startsWith('http') ? (
+                    <a href={banner.link} target="_blank" rel="noopener noreferrer" className="block">
+                      <img
+                        src={banner.imageUrl}
+                        alt={banner.title}
+                        className="w-full h-[300px] sm:h-[400px] md:h-[500px] object-cover"
+                      />
+                    </a>
+                  ) : banner.link ? (
+                    <Link to={banner.link} className="block">
+                      <img
+                        src={banner.imageUrl}
+                        alt={banner.title}
+                        className="w-full h-[300px] sm:h-[400px] md:h-[500px] object-cover"
+                      />
+                    </Link>
+                  ) : (
+                    <img
+                      src={banner.imageUrl}
+                      alt={banner.title}
+                      className="w-full h-[300px] sm:h-[400px] md:h-[500px] object-cover"
+                    />
+                  )}
+
+                  {/* Overlay hero text on banner */}
+                  {heroTextPosition === 'overlay' ? (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="text-center px-4 sm:px-6 lg:px-8 max-w-4xl">
+                        <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold text-white mb-4">
+                          Creative Solutions for
+                          <span className="text-primary block mt-2">Your Brand</span>
+                        </h1>
+                        <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto mb-6">
+                          Professional graphics, video editing, 3D rendering, and AI services
+                          to bring your vision to life
+                        </p>
+                        <div className="flex flex-col sm:flex-row items-center justify-center space-y-3 sm:space-y-0 sm:space-x-4">
+                          <Link to="/services" className="btn-primary text-lg flex items-center space-x-2">
+                            <span>Explore Services</span>
+                            <ArrowRight size={20} />
+                          </Link>
+                          <Link to="/register" className="btn-secondary text-lg">
+                            Get Started Free
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Banner title overlay (non-hero mode) */
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex items-end">
+                      <div className="p-6 md:p-10">
+                        <h2 className="text-white text-xl md:text-3xl font-bold">{banner.title}</h2>
+                        {banner.description && (
+                          <p className="text-white/80 text-sm md:text-base mt-1">{banner.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+            ))}
+          </div>
+
+          {/* Navigation Arrows */}
+          {banners.length > 1 && (
+            <>
+              <button
+                onClick={prevBanner}
+                className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+              >
+                <ChevronLeft size={24} />
+              </button>
+              <button
+                onClick={nextBanner}
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-2 rounded-full transition-colors"
+              >
+                <ChevronRight size={24} />
+              </button>
+
+              {/* Dots */}
+              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center space-x-2">
+                {banners.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentBanner(index)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all ${
+                      index === currentBanner ? 'bg-primary w-6' : 'bg-white/50 hover:bg-white/80'
+                    }`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {/* Hero Section - shown below banner when position is 'below', or when no banners exist */}
+      {(heroTextPosition === 'below' || banners.length === 0) && (
       <section className="relative bg-gradient-to-br from-dark via-darker to-dark py-20 md:py-32 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-20 left-10 w-72 h-72 bg-primary rounded-full blur-3xl" />
@@ -56,6 +201,7 @@ const Landing = () => {
           </div>
         </div>
       </section>
+      )}
 
       {/* Features Section */}
       <section className="py-20 bg-darker">

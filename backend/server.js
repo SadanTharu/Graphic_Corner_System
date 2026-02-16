@@ -27,6 +27,8 @@ const uploadRoutes = require('./routes/upload');
 const packageRoutes = require('./routes/packages');
 const notificationRoutes = require('./routes/notifications');
 const analyticsRoutes = require('./routes/analytics');
+const bannerRoutes = require('./routes/banners');
+const settingsRoutes = require('./routes/settings');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -39,6 +41,8 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/packages', packageRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/banners', bannerRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

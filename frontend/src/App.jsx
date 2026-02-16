@@ -29,6 +29,7 @@ import AdminFinance from './pages/admin/AdminFinance';
 import AdminPayments from './pages/admin/AdminPayments';
 import AdminTeam from './pages/admin/AdminTeam';
 import AdminPackages from './pages/admin/AdminPackages';
+import AdminBanners from './pages/admin/AdminBanners';
 
 // Team Pages
 import TeamDashboard from './pages/team/TeamDashboard';
@@ -82,6 +83,7 @@ function App() {
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="finance" element={<AdminFinance />} />
                 <Route path="team" element={<AdminTeam />} />
+                <Route path="banners" element={<AdminBanners />} />
               </Route>
 
               {/* Team Routes */}

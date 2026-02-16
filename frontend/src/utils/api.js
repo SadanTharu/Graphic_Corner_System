@@ -261,4 +261,54 @@ export const analyticsAPI = {
   getDashboard: () => apiRequest('/api/analytics'),
 };
 
+// Banners API
+export const bannersAPI = {
+  getActive: async () => {
+    const response = await apiRequest('/api/banners');
+    return response.banners || response;
+  },
+  getAll: async () => {
+    const response = await apiRequest('/api/banners/all');
+    return response.banners || response;
+  },
+  create: async (data) => {
+    const response = await apiRequest('/api/banners', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response;
+  },
+  update: async (id, data) => {
+    const response = await apiRequest(`/api/banners/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+    return response;
+  },
+  toggle: async (id) => {
+    const response = await apiRequest(`/api/banners/${id}/toggle`, {
+      method: 'PATCH',
+    });
+    return response;
+  },
+  delete: (id) => apiRequest(`/api/banners/${id}`, {
+    method: 'DELETE',
+  }),
+};
+
+// Settings API
+export const settingsAPI = {
+  get: async (key) => {
+    const response = await apiRequest(`/api/settings/${key}`);
+    return response;
+  },
+  update: async (key, value) => {
+    const response = await apiRequest(`/api/settings/${key}`, {
+      method: 'PUT',
+      body: JSON.stringify({ value }),
+    });
+    return response;
+  },
+};
+
 export default apiRequest;
