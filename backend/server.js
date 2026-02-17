@@ -11,7 +11,15 @@ dotenv.config();
 const app = express();
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? [process.env.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:5173'].filter(Boolean)
+    : '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
