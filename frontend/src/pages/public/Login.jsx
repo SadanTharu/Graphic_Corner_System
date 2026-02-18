@@ -33,20 +33,6 @@ const Login = () => {
     setLoading(false);
   };
 
-  const quickLogin = (role) => {
-    let credentials = {};
-    if (role === 'admin') {
-      credentials = { email: 'admin@graphiccorner.lk', password: 'admin123' };
-    } else if (role === 'team') {
-      credentials = { email: 'nimal@graphiccorner.lk', password: 'team123' };
-    } else {
-      credentials = { email: 'kasun@example.com', password: 'customer123' };
-    }
-    
-    setEmail(credentials.email);
-    setPassword(credentials.password);
-  };
-
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full">
@@ -57,31 +43,6 @@ const Login = () => {
           </div>
           <h2 className="text-3xl font-bold text-white">Welcome Back</h2>
           <p className="text-textGray mt-2">Sign in to your account</p>
-        </div>
-
-        {/* Quick Login Demo Buttons */}
-        <div className="mb-6 p-4 bg-lightGray/50 rounded-lg border border-gray-700">
-          <p className="text-textGray text-xs mb-3 text-center">Quick Login (Demo)</p>
-          <div className="grid grid-cols-3 gap-2">
-            <button
-              onClick={() => quickLogin('customer')}
-              className="text-xs py-2 bg-blue-500/20 text-blue-500 rounded hover:bg-blue-500/30 transition-colors"
-            >
-              Customer
-            </button>
-            <button
-              onClick={() => quickLogin('admin')}
-              className="text-xs py-2 bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
-            >
-              Admin
-            </button>
-            <button
-              onClick={() => quickLogin('team')}
-              className="text-xs py-2 bg-green-500/20 text-green-500 rounded hover:bg-green-500/30 transition-colors"
-            >
-              Team
-            </button>
-          </div>
         </div>
 
         {/* Login Form */}
