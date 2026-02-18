@@ -53,7 +53,7 @@ app.use('/api/settings', settingsRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Server is running', version: '1.0.1' });
+  res.json({ status: 'ok', message: 'Server is running', version: '1.0.2', deployedAt: new Date().toISOString() });
 });
 
 // Error handling middleware
