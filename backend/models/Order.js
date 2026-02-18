@@ -94,12 +94,11 @@ const orderSchema = new mongoose.Schema({
 });
 
 // Generate order number before validation
-orderSchema.pre('validate', async function(next) {
+orderSchema.pre('validate', async function() {
   if (!this.orderNumber) {
     const count = await mongoose.model('Order').countDocuments();
     this.orderNumber = `GC${String(count + 1).padStart(5, '0')}`;
   }
-  next();
 });
 
 module.exports = mongoose.model('Order', orderSchema);
