@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import { authAPI } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -20,19 +21,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { success: false, error: data.message || 'Invalid credentials' };
-      }
+      const data = await authAPI.login(email, password);
 
       // Store user and token
       setUser(data.user);
@@ -43,25 +32,13 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: data.user };
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      return { success: false, error: error.message || 'Network error. Please try again.' };
     }
   };
 
   const register = async (userData) => {
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        return { success: false, error: data.message || 'Registration failed' };
-      }
+      const data = await authAPI.register(userData);
 
       // Store user and token
       setUser(data.user);
@@ -72,7 +49,7 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user: data.user };
     } catch (error) {
       console.error('Registration error:', error);
-      return { success: false, error: 'Network error. Please try again.' };
+      return { success: false, error: error.message || 'Network error. Please try again.' };
     }
   };
 

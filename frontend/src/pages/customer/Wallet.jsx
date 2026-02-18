@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useCart } from '../../context/CartContext';
 import { Plus, ArrowUpCircle, ArrowDownCircle, CreditCard, Upload, X, File, Loader } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { walletAPI, uploadAPI } from '../../utils/api';
 
 const Wallet = () => {
   const { wallet, setWalletBalance } = useCart();
@@ -22,26 +23,12 @@ const Wallet = () => {
   const fetchWalletData = async () => {
     try {
       // Fetch balance
-      const balanceRes = await fetch('/api/wallet/balance', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (balanceRes.ok) {
-        const balanceData = await balanceRes.json();
-        setWalletBalance(balanceData.balance);
-      }
+      const balanceData = await walletAPI.getBalance();
+      setWalletBalance(balanceData.balance);
 
       // Fetch transactions
-      const transactionsRes = await fetch('/api/wallet/transactions', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      });
-      if (transactionsRes.ok) {
-        const transactionsData = await transactionsRes.json();
-        setTransactions(transactionsData.transactions);
-      }
+      const transactionsData = await walletAPI.getTransactions();
+      setTransactions(transactionsData.transactions);
     } catch (error) {
       console.error('Error fetching wallet data:', error);
     }
@@ -97,40 +84,15 @@ const Wallet = () => {
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const uploadRes = await fetch('/api/upload/single', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload payment slip');
-      }
-
-      const uploadData = await uploadRes.json();
+      const uploadData = await uploadAPI.single(formData);
 
       // Submit top-up request
-      const topUpRes = await fetch('/api/wallet/topup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: JSON.stringify({
-          amount: amountNum,
-          paymentMethod: 'bank_transfer',
-          reference: reference || `TOPUP-${Date.now()}`,
-          slip: uploadData.file.url
-        })
+      const topUpData = await walletAPI.topup({
+        amount: amountNum,
+        paymentMethod: 'bank_transfer',
+        reference: reference || `TOPUP-${Date.now()}`,
+        slip: uploadData.file.url
       });
-
-      if (!topUpRes.ok) {
-        throw new Error('Failed to submit top-up request');
-      }
-
-      const topUpData = await topUpRes.json();
       
       toast.success('Top-up request submitted successfully!');
       setShowTopUp(false);

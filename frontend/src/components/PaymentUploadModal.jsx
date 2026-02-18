@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Upload, X, File, Loader, Wallet } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { uploadAPI } from '../utils/api';
 
 const PaymentUploadModal = ({ isOpen, onClose, onSubmit, paymentDetails, walletBalance = 0, onWalletPay }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -57,19 +58,7 @@ const PaymentUploadModal = ({ isOpen, onClose, onSubmit, paymentDetails, walletB
       const formData = new FormData();
       formData.append('file', selectedFile);
 
-      const uploadRes = await fetch('/api/upload/single', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        },
-        body: formData
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload payment slip');
-      }
-
-      const uploadData = await uploadRes.json();
+      const uploadData = await uploadAPI.single(formData);
 
       // Call the parent submit handler with the uploaded file URL
       await onSubmit({
