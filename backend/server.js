@@ -1,6 +1,5 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const dotenv = require('dotenv');
 const morgan = require('morgan');
 const { verifyCloudinary } = require('./config/cloudinary');
@@ -10,12 +9,16 @@ dotenv.config();
 
 const app = express();
 
-// Middleware - CORS must allow all origins for cross-domain API access
-app.use(cors({
-  origin: '*',
-  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+// Manual CORS middleware — no cors package, no credentials header
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(204);
+  }
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
