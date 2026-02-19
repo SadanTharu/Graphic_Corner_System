@@ -226,6 +226,134 @@ export const packagesAPI = {
   }),
 };
 
+// Subscriptions API
+export const subscriptionsAPI = {
+  getAll: async () => {
+    const response = await apiRequest('/api/subscriptions');
+    return response.subscriptions || response;
+  },
+  getById: async (id) => {
+    const response = await apiRequest(`/api/subscriptions/${id}`);
+    return response.subscription || response;
+  },
+  subscribe: async (packageId) => {
+    const response = await apiRequest('/api/subscriptions', {
+      method: 'POST',
+      body: JSON.stringify({ packageId }),
+    });
+    return response;
+  },
+  approve: async (id) => {
+    const response = await apiRequest(`/api/subscriptions/${id}/approve`, {
+      method: 'PATCH',
+    });
+    return response;
+  },
+  cancel: async (id, reason) => {
+    const response = await apiRequest(`/api/subscriptions/${id}/cancel`, {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
+    });
+    return response;
+  },
+  assignTask: async (subId, taskId, assignedTo) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/tasks/${taskId}/assign`, {
+      method: 'PATCH',
+      body: JSON.stringify({ assignedTo }),
+    });
+    return response;
+  },
+  uploadRaw: async (subId, taskId, data) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/tasks/${taskId}/raw`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response;
+  },
+  uploadDeliverables: async (subId, taskId, data) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/tasks/${taskId}/deliverables`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response;
+  },
+  completeTask: async (subId, taskId) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/tasks/${taskId}/complete`, {
+      method: 'PATCH',
+    });
+    return response;
+  },
+  // Payment endpoints
+  payDirect: async (subId, slip) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/pay`, {
+      method: 'POST',
+      body: JSON.stringify({ slip }),
+    });
+    return response;
+  },
+  walletPay: async (subId) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/wallet-pay`, {
+      method: 'POST',
+    });
+    return response;
+  },
+  verifyPayment: async (subId, action) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/verify-payment`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action }),
+    });
+    return response;
+  },
+  // Cycle management endpoints (admin only)
+  updateCycleSettings: async (subId, cycleDays, cycleStartDate) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/cycle-settings`, {
+      method: 'PATCH',
+      body: JSON.stringify({ cycleDays, cycleStartDate }),
+    });
+    return response;
+  },
+  updateTaskDeadline: async (subId, taskId, deadline) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/tasks/${taskId}/deadline`, {
+      method: 'PATCH',
+      body: JSON.stringify({ deadline }),
+    });
+    return response;
+  },
+  resetCycle: async (subId) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/cycle-reset`, {
+      method: 'POST',
+    });
+    return response;
+  },
+  // Final payment endpoints
+  payFinalDirect: async (subId, slip) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/final-pay`, {
+      method: 'POST',
+      body: JSON.stringify({ slip }),
+    });
+    return response;
+  },
+  walletPayFinal: async (subId) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/final-wallet-pay`, {
+      method: 'POST',
+    });
+    return response;
+  },
+  verifyFinalPayment: async (subId, action) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/verify-final-payment`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action }),
+    });
+    return response;
+  },
+  renewSubscription: async (subId) => {
+    const response = await apiRequest(`/api/subscriptions/${subId}/renew`, {
+      method: 'POST',
+    });
+    return response;
+  },
+};
+
 // Auth API
 export const authAPI = {
   login: (email, password) => apiRequest('/api/auth/login', {

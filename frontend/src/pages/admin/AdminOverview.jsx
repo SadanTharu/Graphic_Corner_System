@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   Package, Users, DollarSign, TrendingUp, Clock, Loader2,
-  ShoppingCart, CheckCircle, XCircle, Wallet, ArrowUpRight, ArrowDownRight, BarChart3, CalendarDays
+  ShoppingCart, CheckCircle, XCircle, Wallet, ArrowUpRight, ArrowDownRight, BarChart3, CalendarDays, ListChecks
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
@@ -135,12 +135,12 @@ const AdminOverview = () => {
           subtitle={`${summary.thisMonthOrders} this month`}
         />
         <StatCard
-          title="Active Orders"
-          value={summary.activeOrders}
-          icon={Package}
+          title="Subscriptions"
+          value={summary.totalSubs || 0}
+          icon={ListChecks}
           color="text-blue-400"
           bgColor="bg-blue-500/10"
-          subtitle={`${summary.completedOrders} completed`}
+          subtitle={`${summary.activeSubs || 0} active, ${summary.pendingSubs || 0} pending`}
         />
         <StatCard
           title="Customers"
@@ -390,8 +390,12 @@ const AdminOverview = () => {
                       <span className="text-textGray">{member.active} active</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Package className="w-3 h-3 text-gray-400" />
-                      <span className="text-textGray">{member.total} total</span>
+                      <ShoppingCart className="w-3 h-3 text-primary" />
+                      <span className="text-textGray">{member.orders || 0} orders</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <ListChecks className="w-3 h-3 text-purple-400" />
+                      <span className="text-textGray">{member.tasks || 0} tasks</span>
                     </div>
                   </div>
                   {/* Progress bar */}

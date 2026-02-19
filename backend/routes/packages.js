@@ -12,8 +12,8 @@ router.get('/', async (req, res) => {
     if (isActive !== undefined) filter.isActive = isActive === 'true';
 
     const packages = await Package.find(filter)
-      .populate('servicesIncluded', 'name category')
-      .sort({ popular: -1, price: 1 });
+      .populate('services.service', 'name category')
+      .sort({ popular: -1, offeringPrice: 1 });
     
     res.json({ packages });
   } catch (error) {
@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const pkg = await Package.findById(req.params.id)
-      .populate('servicesIncluded', 'name category priceRange');
+      .populate('services.service', 'name category priceRange');
     
     if (!pkg) {
       return res.status(404).json({ message: 'Package not found' });

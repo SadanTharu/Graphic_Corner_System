@@ -19,6 +19,10 @@ const notificationSchema = new mongoose.Schema({
       'files_uploaded',
       'revision_requested',
       'order_completed',
+      'subscription_request',
+      'subscription_approved',
+      'subscription_cancelled',
+      'subscription_completed',
       'general'
     ],
     default: 'general'

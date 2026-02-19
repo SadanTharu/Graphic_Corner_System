@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { servicesAPI, packagesAPI, ordersAPI } from '../../utils/api';
+import { servicesAPI, packagesAPI, ordersAPI, subscriptionsAPI } from '../../utils/api';
 import { useCart } from '../../context/CartContext';
-import { Palette, Video, Box, Sparkles, Check, Loader2 } from 'lucide-react';
+import { Palette, Video, Box, Sparkles, Check, Loader2, Clock, XCircle, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const NewRequest = () => {
   const [selectedTab, setSelectedTab] = useState('services');
   const [services, setServices] = useState([]);
   const [packages, setPackages] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [subscribing, setSubscribing] = useState(null);
   const { addToCart, cart } = useCart();
 
   const iconMap = {
@@ -28,6 +30,7 @@ const NewRequest = () => {
   useEffect(() => {
     fetchServices();
     fetchPackages();
+    fetchSubscriptions();
   }, []);
 
   const fetchServices = async () => {
@@ -49,6 +52,47 @@ const NewRequest = () => {
       setPackages(data.filter(pkg => pkg.isActive));
     } catch (error) {
       console.error('Error fetching packages:', error);
+    }
+  };
+
+  const fetchSubscriptions = async () => {
+    try {
+      const data = await subscriptionsAPI.getAll();
+      setSubscriptions(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching subscriptions:', error);
+    }
+  };
+
+  // Check if user has an active/pending subscription for a package
+  const getSubscriptionForPackage = (packageId) => {
+    return subscriptions.find(
+      s => (s.package?._id || s.package) === packageId && ['pending', 'awaiting_payment', 'approved', 'active'].includes(s.status)
+    );
+  };
+
+  const handleSubscribe = async (pkg) => {
+    try {
+      setSubscribing(pkg._id);
+      await subscriptionsAPI.subscribe(pkg._id);
+      toast.success('Subscription request submitted! Waiting for admin approval.');
+      fetchSubscriptions();
+    } catch (error) {
+      console.error('Error subscribing:', error);
+      toast.error(error.message || 'Failed to subscribe');
+    } finally {
+      setSubscribing(null);
+    }
+  };
+
+  const handleCancelSubscription = async (subId) => {
+    try {
+      await subscriptionsAPI.cancel(subId, 'Customer cancelled');
+      toast.success('Subscription request cancelled');
+      fetchSubscriptions();
+    } catch (error) {
+      console.error('Error cancelling:', error);
+      toast.error(error.message || 'Failed to cancel');
     }
   };
 
@@ -249,29 +293,98 @@ const NewRequest = () => {
               </div>
 
               <div className="mb-6">
+                {pkg.discount > 0 && (
+                  <span className="text-textGray line-through text-sm block mb-1">
+                    LKR {pkg.totalPrice?.toLocaleString()}
+                  </span>
+                )}
                 <div className="flex items-baseline">
                   <span className="text-3xl font-bold text-primary">
-                    LKR {pkg.price.toLocaleString()}
+                    LKR {(pkg.offeringPrice || pkg.price || 0).toLocaleString()}
                   </span>
                   <span className="text-textGray text-sm ml-2">/ {pkg.duration}</span>
                 </div>
+                {pkg.discount > 0 && (
+                  <span className="inline-block mt-2 px-2 py-0.5 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full">
+                    {pkg.discount}% OFF
+                  </span>
+                )}
               </div>
 
               <ul className="space-y-3 mb-6">
-                {pkg.features.map((feature, index) => (
+                {(pkg.services || []).map((s, index) => (
                   <li key={index} className="flex items-start space-x-2 text-sm">
                     <Check size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-textGray">{feature}</span>
+                    <span className="text-textGray">
+                      {s.service?.name || 'Service'} ×{s.count}
+                    </span>
                   </li>
                 ))}
               </ul>
 
-              <button
-                onClick={() => toast.success('Package added! Our team will contact you.')}
-                className="w-full btn-primary"
-              >
-                Subscribe Now
-              </button>
+              {(() => {
+                const existingSub = getSubscriptionForPackage(pkg._id);
+                if (existingSub) {
+                  return (
+                    <div className="space-y-2">
+                      <div className={`w-full py-3 rounded-lg font-medium text-center flex items-center justify-center space-x-2 ${
+                        existingSub.status === 'pending'
+                          ? 'bg-yellow-500/20 text-yellow-500'
+                          : existingSub.status === 'awaiting_payment'
+                          ? 'bg-orange-500/20 text-orange-400'
+                          : existingSub.status === 'active'
+                          ? 'bg-green-500/20 text-green-500'
+                          : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {existingSub.status === 'pending' ? (
+                          <>
+                            <Clock size={18} />
+                            <span>Applied — Waiting for Approval</span>
+                          </>
+                        ) : existingSub.status === 'awaiting_payment' ? (
+                          <>
+                            <CreditCard size={18} />
+                            <span>Approved — Pay 25% Advance (LKR {(existingSub.advanceAmount || 0).toLocaleString()})</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check size={18} />
+                            <span>Subscription Active</span>
+                          </>
+                        )}
+                      </div>
+                      {existingSub.status === 'awaiting_payment' && (
+                        <p className="text-xs text-orange-400 text-center">Go to My Subscriptions to make payment</p>
+                      )}
+                      {['pending', 'awaiting_payment'].includes(existingSub.status) && (
+                        <button
+                          onClick={() => handleCancelSubscription(existingSub._id)}
+                          className="w-full py-2 rounded-lg font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 transition-all flex items-center justify-center space-x-2 text-sm"
+                        >
+                          <XCircle size={16} />
+                          <span>Cancel Request</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                }
+                return (
+                  <button
+                    onClick={() => handleSubscribe(pkg)}
+                    disabled={subscribing === pkg._id}
+                    className="w-full btn-primary flex items-center justify-center space-x-2"
+                  >
+                    {subscribing === pkg._id ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>Subscribing...</span>
+                      </>
+                    ) : (
+                      <span>Subscribe Now</span>
+                    )}
+                  </button>
+                );
+              })()}
               </div>
             ))}
             </div>

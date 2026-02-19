@@ -23,6 +23,9 @@ router.get('/', auth, async (req, res) => {
     const tasks = await Task.find(filter)
       .populate('assignedTo', 'name specialty avatar')
       .populate('order', 'orderNumber totalAmount')
+      .populate('subscription', 'packageName status customer currentCycle')
+      .populate('service', 'name category')
+      .populate('customer', 'name email')
       .sort({ createdAt: -1 });
 
     res.json({ tasks });
@@ -36,7 +39,10 @@ router.get('/:id', auth, async (req, res) => {
   try {
     const task = await Task.findById(req.params.id)
       .populate('assignedTo', 'name specialty avatar')
-      .populate('order');
+      .populate('order')
+      .populate('subscription', 'packageName status customer currentCycle')
+      .populate('service', 'name category')
+      .populate('customer', 'name email');
 
     if (!task) {
       return res.status(404).json({ message: 'Task not found' });

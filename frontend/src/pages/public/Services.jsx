@@ -226,7 +226,7 @@ const Services = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {packages.map(pkg => (
               <div
-                key={pkg.id}
+                key={pkg._id || pkg.id}
                 className={`card relative ${
                   pkg.popular ? 'border-2 border-primary scale-105' : ''
                 }`}
@@ -245,17 +245,29 @@ const Services = () => {
                 </div>
 
                 <div className="text-center mb-6">
+                  {pkg.discount > 0 && (
+                    <span className="text-textGray line-through text-sm block mb-1">
+                      LKR {pkg.totalPrice?.toLocaleString()}
+                    </span>
+                  )}
                   <span className="text-4xl font-bold text-primary">
-                    LKR {pkg.price.toLocaleString()}
+                    LKR {(pkg.offeringPrice || pkg.price || 0).toLocaleString()}
                   </span>
                   <span className="text-textGray text-sm block mt-1">per {pkg.duration}</span>
+                  {pkg.discount > 0 && (
+                    <span className="inline-block mt-2 px-3 py-1 bg-green-500/20 text-green-400 text-xs font-semibold rounded-full">
+                      {pkg.discount}% OFF
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-3 mb-8">
-                  {pkg.features.map((feature, index) => (
+                  {(pkg.services || []).map((s, index) => (
                     <div key={index} className="flex items-start space-x-2">
                       <Check size={18} className="text-green-500 flex-shrink-0 mt-1" />
-                      <span className="text-textGray text-sm">{feature}</span>
+                      <span className="text-textGray text-sm">
+                        {s.service?.name || 'Service'} ×{s.count}
+                      </span>
                     </div>
                   ))}
                 </div>

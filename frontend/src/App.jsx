@@ -20,17 +20,16 @@ import ResetPassword from './pages/public/ResetPassword';
 // Customer Pages
 import CustomerDashboard from './pages/customer/CustomerDashboard';
 import NewRequest from './pages/customer/NewRequest';
-import MyOrders from './pages/customer/MyOrders';
+import CustomerOrdersHub from './pages/customer/CustomerOrdersHub';
 import Wallet from './pages/customer/Wallet';
 
 // Admin Pages
 import AdminOverview from './pages/admin/AdminOverview';
-import AdminOrders from './pages/admin/AdminOrders';
-import AdminServices from './pages/admin/AdminServices';
-import AdminFinance from './pages/admin/AdminFinance';
-import AdminPayments from './pages/admin/AdminPayments';
+import AdminCatalog from './pages/admin/AdminCatalog';
+import AdminOrdersHub from './pages/admin/AdminOrdersHub';
+import AdminPaymentsHub from './pages/admin/AdminPaymentsHub';
 import AdminTeam from './pages/admin/AdminTeam';
-import AdminPackages from './pages/admin/AdminPackages';
+import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminBanners from './pages/admin/AdminBanners';
 
 // Team Pages
@@ -69,7 +68,7 @@ function App() {
               >
                 <Route index element={<CustomerDashboard />} />
                 <Route path="new-request" element={<NewRequest />} />
-                <Route path="my-orders" element={<MyOrders />} />
+                <Route path="my-orders" element={<CustomerOrdersHub />} />
                 <Route path="wallet" element={<Wallet />} />
                 <Route path="profile" element={<Profile />} />
               </Route>
@@ -85,12 +84,11 @@ function App() {
               >
                 <Route index element={<Navigate to="/admin/overview" replace />} />
                 <Route path="overview" element={<AdminOverview />} />
-                <Route path="orders" element={<AdminOrders />} />
-                <Route path="services" element={<AdminServices />} />
-                <Route path="packages" element={<AdminPackages />} />
-                <Route path="payments" element={<AdminPayments />} />
-                <Route path="finance" element={<AdminFinance />} />
+                <Route path="orders" element={<AdminOrdersHub />} />
+                <Route path="catalog" element={<AdminCatalog />} />
+                <Route path="payments" element={<AdminPaymentsHub />} />
                 <Route path="team" element={<AdminTeam />} />
+                <Route path="customers" element={<AdminCustomers />} />
                 <Route path="banners" element={<AdminBanners />} />
                 <Route path="profile" element={<Profile />} />
               </Route>

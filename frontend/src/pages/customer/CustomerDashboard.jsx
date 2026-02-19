@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, Clock, CheckCircle, Wallet, TrendingUp, Loader2 } from 'lucide-react';
+import { Package, Clock, CheckCircle, Wallet, TrendingUp, Loader2, ListChecks } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
-import { ordersAPI, walletAPI } from '../../utils/api';
+import { ordersAPI, walletAPI, subscriptionsAPI } from '../../utils/api';
 import StatusStepper from '../../components/StatusStepper';
 import PaymentUploadModal from '../../components/PaymentUploadModal';
 import toast from 'react-hot-toast';
@@ -12,6 +12,7 @@ const CustomerDashboard = () => {
   const { user } = useAuth();
   const { wallet, setWalletBalance } = useCart();
   const [orders, setOrders] = useState([]);
+  const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [walletBalance, setLocalWalletBalance] = useState(0);
   const [paymentModal, setPaymentModal] = useState({
@@ -33,11 +34,13 @@ const CustomerDashboard = () => {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const [data, walletData] = await Promise.all([
+      const [data, walletData, subsData] = await Promise.all([
         ordersAPI.getAll(),
-        walletAPI.getBalance().catch(() => ({ balance: 0 }))
+        walletAPI.getBalance().catch(() => ({ balance: 0 })),
+        subscriptionsAPI.getAll().catch(() => [])
       ]);
       setOrders(data);
+      setSubscriptions(Array.isArray(subsData) ? subsData : []);
       const bal = walletData?.balance || walletData?.walletBalance || 0;
       setLocalWalletBalance(bal);
       setWalletBalance(bal);
@@ -126,6 +129,7 @@ const CustomerDashboard = () => {
   const activeOrders = orders.filter(o => o.status !== 'completed' && o.status !== 'cancelled');
   const completedOrders = orders.filter(o => o.status === 'completed');
   const totalSpent = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+  const activeSubs = subscriptions.filter(s => s.status === 'active');
 
   const stats = [
     {
@@ -134,6 +138,13 @@ const CustomerDashboard = () => {
       icon: Package,
       color: 'text-primary',
       bgColor: 'bg-primary/10'
+    },
+    {
+      title: 'Active Subscriptions',
+      value: activeSubs.length,
+      icon: ListChecks,
+      color: 'text-blue-500',
+      bgColor: 'bg-blue-500/10'
     },
     {
       title: 'Completed',
@@ -146,13 +157,6 @@ const CustomerDashboard = () => {
       title: 'Wallet Balance',
       value: `LKR ${walletBalance.toLocaleString()}`,
       icon: Wallet,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10'
-    },
-    {
-      title: 'Total Spent',
-      value: `LKR ${totalSpent.toLocaleString()}`,
-      icon: TrendingUp,
       color: 'text-yellow-500',
       bgColor: 'bg-yellow-500/10'
     }

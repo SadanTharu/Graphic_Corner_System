@@ -3,7 +3,7 @@ import { servicesAPI, uploadAPI } from '../../utils/api';
 import { Plus, Edit2, Trash2, Search, Loader2, X, Upload, Play } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const AdminServices = () => {
+const AdminServices = ({ embedded }) => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,16 +216,26 @@ const AdminServices = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white">Service Management</h2>
-          <p className="text-textGray mt-2">Manage your service catalog</p>
+      {!embedded && (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white">Service Management</h2>
+            <p className="text-textGray mt-2">Manage your service catalog</p>
+          </div>
+          <button onClick={handleAddNew} className="btn-primary flex items-center space-x-2 mt-4 md:mt-0">
+            <Plus size={20} />
+            <span>Add New Service</span>
+          </button>
         </div>
-        <button onClick={handleAddNew} className="btn-primary flex items-center space-x-2 mt-4 md:mt-0">
-          <Plus size={20} />
-          <span>Add New Service</span>
-        </button>
-      </div>
+      )}
+      {embedded && (
+        <div className="flex justify-end">
+          <button onClick={handleAddNew} className="btn-primary flex items-center space-x-2">
+            <Plus size={20} />
+            <span>Add New Service</span>
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="card">

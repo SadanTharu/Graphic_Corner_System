@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
-import { packagesAPI } from '../../utils/api';
-import { Plus, Edit2, Trash2, Star, Loader2, X } from 'lucide-react';
+import { packagesAPI, servicesAPI } from '../../utils/api';
+import { Plus, Edit2, Trash2, Star, Loader2, X, Percent, Tag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const AdminPackages = () => {
+const AdminPackages = ({ embedded }) => {
   const [packages, setPackages] = useState([]);
+  const [availableServices, setAvailableServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPackage, setEditingPackage] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    price: '',
     duration: 'month',
-    features: [''],
+    services: [],
+    offeringPrice: '',
     popular: false,
-    maxOrders: '',
   });
 
   const durationLabels = {
@@ -25,17 +25,21 @@ const AdminPackages = () => {
   };
 
   useEffect(() => {
-    fetchPackages();
+    fetchData();
   }, []);
 
-  const fetchPackages = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await packagesAPI.getAll();
-      setPackages(data);
+      const [pkgData, svcData] = await Promise.all([
+        packagesAPI.getAll(),
+        servicesAPI.getAll(),
+      ]);
+      setPackages(pkgData);
+      setAvailableServices(svcData);
     } catch (error) {
-      console.error('Error fetching packages:', error);
-      toast.error('Failed to load packages');
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -45,13 +49,50 @@ const AdminPackages = () => {
     setFormData({
       name: '',
       description: '',
-      price: '',
       duration: 'month',
-      features: [''],
+      services: [],
+      offeringPrice: '',
       popular: false,
-      maxOrders: '',
     });
     setEditingPackage(null);
+  };
+
+  // Calculate totals from selected services
+  const totalPrice = formData.services.reduce(
+    (sum, s) => sum + (Number(s.count) || 0) * (Number(s.unitPrice) || 0),
+    0
+  );
+
+  const discountPercent =
+    totalPrice > 0 && Number(formData.offeringPrice) >= 0
+      ? Math.round(((totalPrice - Number(formData.offeringPrice)) / totalPrice) * 100)
+      : 0;
+
+  const handleAddService = () => {
+    setFormData({
+      ...formData,
+      services: [...formData.services, { service: '', count: 1, unitPrice: '' }],
+    });
+  };
+
+  const handleRemoveService = (index) => {
+    const updated = formData.services.filter((_, i) => i !== index);
+    setFormData({ ...formData, services: updated });
+  };
+
+  const handleServiceChange = (index, field, value) => {
+    const updated = [...formData.services];
+    updated[index] = { ...updated[index], [field]: value };
+
+    // If selecting a service, auto-fill unitPrice from service's priceRange min
+    if (field === 'service' && value) {
+      const svc = availableServices.find((s) => s._id === value);
+      if (svc && svc.priceRange) {
+        updated[index].unitPrice = svc.priceRange.min;
+      }
+    }
+
+    setFormData({ ...formData, services: updated });
   };
 
   const handleEdit = (pkg) => {
@@ -59,11 +100,14 @@ const AdminPackages = () => {
     setFormData({
       name: pkg.name,
       description: pkg.description,
-      price: pkg.price,
       duration: pkg.duration,
-      features: pkg.features || [''],
+      services: (pkg.services || []).map((s) => ({
+        service: s.service?._id || s.service,
+        count: s.count,
+        unitPrice: s.unitPrice,
+      })),
+      offeringPrice: pkg.offeringPrice,
       popular: pkg.popular || false,
-      maxOrders: pkg.maxOrders || '',
     });
     setIsModalOpen(true);
   };
@@ -75,49 +119,34 @@ const AdminPackages = () => {
 
   const handleDelete = async (pkg) => {
     if (!confirm(`Are you sure you want to delete "${pkg.name}"?`)) return;
-
     try {
       await packagesAPI.delete(pkg._id);
       toast.success('Package deleted successfully');
-      fetchPackages();
+      fetchData();
     } catch (error) {
       console.error('Error deleting package:', error);
       toast.error('Failed to delete package');
     }
   };
 
-  const handleAddFeature = () => {
-    setFormData({
-      ...formData,
-      features: [...formData.features, ''],
-    });
-  };
-
-  const handleRemoveFeature = (index) => {
-    const newFeatures = formData.features.filter((_, i) => i !== index);
-    setFormData({
-      ...formData,
-      features: newFeatures.length > 0 ? newFeatures : [''],
-    });
-  };
-
-  const handleFeatureChange = (index, value) => {
-    const newFeatures = [...formData.features];
-    newFeatures[index] = value;
-    setFormData({ ...formData, features: newFeatures });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.description || !formData.price || !formData.maxOrders) {
+    if (!formData.name || !formData.description) {
       toast.error('Please fill in all required fields');
       return;
     }
 
-    const validFeatures = formData.features.filter(f => f.trim() !== '');
-    if (validFeatures.length === 0) {
-      toast.error('Please add at least one feature');
+    const validServices = formData.services.filter(
+      (s) => s.service && Number(s.count) > 0 && Number(s.unitPrice) >= 0
+    );
+    if (validServices.length === 0) {
+      toast.error('Please add at least one service with valid count and price');
+      return;
+    }
+
+    if (!formData.offeringPrice || Number(formData.offeringPrice) < 0) {
+      toast.error('Please enter a valid offering price');
       return;
     }
 
@@ -125,11 +154,14 @@ const AdminPackages = () => {
       const packageData = {
         name: formData.name,
         description: formData.description,
-        price: parseInt(formData.price),
         duration: formData.duration,
-        features: validFeatures,
+        services: validServices.map((s) => ({
+          service: s.service,
+          count: parseInt(s.count),
+          unitPrice: parseInt(s.unitPrice),
+        })),
+        offeringPrice: parseInt(formData.offeringPrice),
         popular: formData.popular,
-        maxOrders: parseInt(formData.maxOrders),
       };
 
       if (editingPackage) {
@@ -142,12 +174,15 @@ const AdminPackages = () => {
 
       setIsModalOpen(false);
       resetForm();
-      fetchPackages();
+      fetchData();
     } catch (error) {
       console.error('Error saving package:', error);
-      toast.error(error.response?.data?.message || 'Failed to save package');
+      toast.error(error.message || 'Failed to save package');
     }
   };
+
+  // get already selected service IDs to prevent duplicates
+  const selectedServiceIds = formData.services.map((s) => s.service).filter(Boolean);
 
   if (loading) {
     return (
@@ -160,16 +195,26 @@ const AdminPackages = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white">Package Management</h2>
-          <p className="text-textGray mt-2">Manage subscription packages for your customers</p>
+      {!embedded && (
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white">Package Management</h2>
+            <p className="text-textGray mt-2">Create service bundles with discounted pricing</p>
+          </div>
+          <button onClick={handleAddNew} className="btn-primary flex items-center space-x-2 mt-4 md:mt-0">
+            <Plus size={20} />
+            <span>Add New Package</span>
+          </button>
         </div>
-        <button onClick={handleAddNew} className="btn-primary flex items-center space-x-2 mt-4 md:mt-0">
-          <Plus size={20} />
-          <span>Add New Package</span>
-        </button>
-      </div>
+      )}
+      {embedded && (
+        <div className="flex justify-end">
+          <button onClick={handleAddNew} className="btn-primary flex items-center space-x-2">
+            <Plus size={20} />
+            <span>Add New Package</span>
+          </button>
+        </div>
+      )}
 
       {/* Packages Grid */}
       {packages.length === 0 ? (
@@ -218,27 +263,54 @@ const AdminPackages = () => {
               <h3 className="text-2xl font-bold text-white mb-2">{pkg.name}</h3>
               <p className="text-textGray text-sm mb-4">{pkg.description}</p>
 
-              <div className="text-center mb-6 py-4 border-y border-gray-700">
+              {/* Pricing */}
+              <div className="text-center mb-4 py-4 border-y border-gray-700">
+                {pkg.discount > 0 && (
+                  <span className="text-textGray line-through text-sm block mb-1">
+                    LKR {pkg.totalPrice?.toLocaleString()}
+                  </span>
+                )}
                 <span className="text-4xl font-bold text-primary">
-                  LKR {pkg.price.toLocaleString()}
+                  LKR {pkg.offeringPrice?.toLocaleString()}
                 </span>
                 <span className="text-textGray text-sm block mt-1">
                   per {pkg.duration}
                 </span>
+                {pkg.discount > 0 && (
+                  <span className="inline-flex items-center space-x-1 mt-2 px-3 py-1 bg-green-500/20 text-green-400 text-sm font-semibold rounded-full">
+                    <Percent size={14} />
+                    <span>{pkg.discount}% OFF</span>
+                  </span>
+                )}
               </div>
 
+              {/* Included Services */}
               <div className="space-y-2 mb-4">
-                <p className="text-white text-sm font-medium">Includes:</p>
-                {pkg.features.map((feature, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <span className="text-green-500 mt-1">•</span>
-                    <span className="text-textGray text-sm">{feature}</span>
+                <p className="text-white text-sm font-medium">Services Included:</p>
+                {(pkg.services || []).map((s, index) => (
+                  <div key={index} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-green-500">•</span>
+                      <span className="text-textGray">
+                        {s.service?.name || 'Service'}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-white font-medium">×{s.count}</span>
+                      <span className="text-textGray ml-2">
+                        (LKR {(s.unitPrice * s.count).toLocaleString()})
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-4 border-t border-gray-700 text-sm text-textGray">
-                Max Orders: <span className="text-white font-semibold">{pkg.maxOrders}</span>
+              <div className="pt-3 border-t border-gray-700 flex items-center justify-between text-sm text-textGray">
+                <span>
+                  Total Services: <span className="text-white font-semibold">
+                    {(pkg.services || []).reduce((sum, s) => sum + s.count, 0)}
+                  </span>
+                </span>
               </div>
             </div>
           ))}
@@ -255,13 +327,13 @@ const AdminPackages = () => {
           <div className="card">
             <p className="text-textGray text-sm mb-2">Popular Packages</p>
             <p className="text-3xl font-bold text-primary">
-              {packages.filter(p => p.popular).length}
+              {packages.filter((p) => p.popular).length}
             </p>
           </div>
           <div className="card">
-            <p className="text-textGray text-sm mb-2">Average Price</p>
+            <p className="text-textGray text-sm mb-2">Avg. Discount</p>
             <p className="text-3xl font-bold text-green-500">
-              LKR {Math.round(packages.reduce((sum, p) => sum + p.price, 0) / packages.length).toLocaleString()}
+              {Math.round(packages.reduce((sum, p) => sum + (p.discount || 0), 0) / packages.length)}%
             </p>
           </div>
         </div>
@@ -270,8 +342,8 @@ const AdminPackages = () => {
       {/* Create/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-dark border border-gray-700 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-dark border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+          <div className="bg-dark border border-gray-700 rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-dark border-b border-gray-700 px-6 py-4 flex items-center justify-between z-10">
               <h3 className="text-xl font-bold text-white">
                 {editingPackage ? 'Edit Package' : 'Create New Package'}
               </h3>
@@ -286,51 +358,22 @@ const AdminPackages = () => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div>
-                <label className="block text-textGray text-sm font-medium mb-2">
-                  Package Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input-field"
-                  placeholder="e.g., Starter Plan"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-textGray text-sm font-medium mb-2">
-                  Description *
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input-field"
-                  rows="2"
-                  placeholder="Brief description of the package..."
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
+              {/* Name & Duration */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-textGray text-sm font-medium mb-2">
-                    Price (LKR) *
+                    Package Name *
                   </label>
                   <input
-                    type="number"
-                    value={formData.price}
-                    onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="input-field"
-                    placeholder="25000"
-                    min="0"
+                    placeholder="e.g., Business Starter"
                     required
                   />
                 </div>
-
                 <div>
                   <label className="block text-textGray text-sm font-medium mb-2">
                     Duration *
@@ -348,56 +391,162 @@ const AdminPackages = () => {
                 </div>
               </div>
 
+              {/* Description */}
               <div>
                 <label className="block text-textGray text-sm font-medium mb-2">
-                  Max Orders per Period *
+                  Description *
                 </label>
-                <input
-                  type="number"
-                  value={formData.maxOrders}
-                  onChange={(e) => setFormData({ ...formData, maxOrders: e.target.value })}
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   className="input-field"
-                  placeholder="10"
-                  min="1"
+                  rows="2"
+                  placeholder="Brief description of the package..."
                   required
                 />
               </div>
 
+              {/* Services Selection */}
               <div>
-                <label className="block text-textGray text-sm font-medium mb-2">
-                  Features *
+                <label className="block text-textGray text-sm font-medium mb-3">
+                  Services *
                 </label>
-                <div className="space-y-2">
-                  {formData.features.map((feature, index) => (
-                    <div key={index} className="flex space-x-2">
-                      <input
-                        type="text"
-                        value={feature}
-                        onChange={(e) => handleFeatureChange(index, e.target.value)}
-                        className="input-field flex-1"
-                        placeholder="Enter a feature..."
-                      />
-                      {formData.features.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveFeature(index)}
-                          className="px-3 py-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-colors"
-                        >
-                          <X size={18} />
-                        </button>
-                      )}
+                <div className="space-y-3">
+                  {formData.services.map((svc, index) => (
+                    <div key={index} className="bg-darker rounded-lg p-4">
+                      <div className="grid grid-cols-12 gap-3 items-end">
+                        {/* Service select */}
+                        <div className="col-span-12 md:col-span-5">
+                          <label className="block text-textGray text-xs mb-1">Service</label>
+                          <select
+                            value={svc.service}
+                            onChange={(e) => handleServiceChange(index, 'service', e.target.value)}
+                            className="input-field text-sm"
+                            required
+                          >
+                            <option value="">Select a service</option>
+                            {availableServices.map((s) => (
+                              <option
+                                key={s._id}
+                                value={s._id}
+                                disabled={selectedServiceIds.includes(s._id) && svc.service !== s._id}
+                              >
+                                {s.name} ({s.category})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Count */}
+                        <div className="col-span-4 md:col-span-2">
+                          <label className="block text-textGray text-xs mb-1">Count</label>
+                          <input
+                            type="number"
+                            value={svc.count}
+                            onChange={(e) => handleServiceChange(index, 'count', e.target.value)}
+                            className="input-field text-sm"
+                            min="1"
+                            placeholder="1"
+                            required
+                          />
+                        </div>
+
+                        {/* Unit Price */}
+                        <div className="col-span-5 md:col-span-3">
+                          <label className="block text-textGray text-xs mb-1">Price per unit (LKR)</label>
+                          <input
+                            type="number"
+                            value={svc.unitPrice}
+                            onChange={(e) => handleServiceChange(index, 'unitPrice', e.target.value)}
+                            className="input-field text-sm"
+                            min="0"
+                            placeholder="5000"
+                            required
+                          />
+                        </div>
+
+                        {/* Subtotal + Remove */}
+                        <div className="col-span-3 md:col-span-2 flex items-end space-x-2">
+                          <div className="flex-1 text-right">
+                            <label className="block text-textGray text-xs mb-1">Subtotal</label>
+                            <p className="text-white font-semibold text-sm py-2">
+                              {((Number(svc.count) || 0) * (Number(svc.unitPrice) || 0)).toLocaleString()}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveService(index)}
+                            className="p-2 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500/30 transition-colors mb-0.5"
+                          >
+                            <X size={16} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
+
                   <button
                     type="button"
-                    onClick={handleAddFeature}
-                    className="text-primary hover:text-red-400 text-sm transition-colors"
+                    onClick={handleAddService}
+                    className="flex items-center space-x-2 text-primary hover:text-red-400 text-sm transition-colors"
                   >
-                    + Add Feature
+                    <Plus size={16} />
+                    <span>Add Service</span>
                   </button>
                 </div>
               </div>
 
+              {/* Price Calculation Summary */}
+              <div className="bg-darker rounded-lg p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-textGray text-sm">
+                    Normal Price (
+                    {formData.services.reduce((sum, s) => sum + (Number(s.count) || 0), 0)} services total)
+                  </span>
+                  <span className="text-white font-bold text-lg">
+                    LKR {totalPrice.toLocaleString()}
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                  <div className="flex-1">
+                    <label className="block text-textGray text-xs mb-1">
+                      Offering Price (LKR) *
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.offeringPrice}
+                      onChange={(e) => setFormData({ ...formData, offeringPrice: e.target.value })}
+                      className="input-field"
+                      min="0"
+                      placeholder="Enter offering price"
+                      required
+                    />
+                  </div>
+                  <div className="text-center pt-4">
+                    <div
+                      className={`inline-flex items-center space-x-1 px-4 py-2 rounded-lg text-lg font-bold ${
+                        discountPercent > 0
+                          ? 'bg-green-500/20 text-green-400'
+                          : discountPercent < 0
+                          ? 'bg-red-500/20 text-red-400'
+                          : 'bg-gray-700 text-textGray'
+                      }`}
+                    >
+                      <Tag size={18} />
+                      <span>{discountPercent}% {discountPercent >= 0 ? 'OFF' : 'MARKUP'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {discountPercent > 0 && (
+                  <p className="text-green-400 text-xs">
+                    Customer saves LKR {(totalPrice - Number(formData.offeringPrice)).toLocaleString()} with this package!
+                  </p>
+                )}
+              </div>
+
+              {/* Popular checkbox */}
               <div className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -411,6 +560,7 @@ const AdminPackages = () => {
                 </label>
               </div>
 
+              {/* Actions */}
               <div className="flex space-x-3 pt-4">
                 <button
                   type="button"
@@ -422,10 +572,7 @@ const AdminPackages = () => {
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 btn-primary"
-                >
+                <button type="submit" className="flex-1 btn-primary">
                   {editingPackage ? 'Update Package' : 'Create Package'}
                 </button>
               </div>

@@ -36,6 +36,7 @@ const notificationRoutes = require('./routes/notifications');
 const analyticsRoutes = require('./routes/analytics');
 const bannerRoutes = require('./routes/banners');
 const settingsRoutes = require('./routes/settings');
+const subscriptionRoutes = require('./routes/subscriptions');
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -50,6 +51,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

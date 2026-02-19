@@ -144,7 +144,9 @@ const TeamDashboard = () => {
         </div>
         <div className="card">
           <p className="text-textGray text-sm mb-2">Total Completed</p>
-          <p className="text-3xl font-bold text-yellow-500">{orders.filter(o => o.status === 'completed').length}</p>
+          <p className="text-3xl font-bold text-yellow-500">
+            {orders.filter(o => o.status === 'completed').length + tasks.filter(t => t.status === 'done').length}
+          </p>
         </div>
       </div>
 

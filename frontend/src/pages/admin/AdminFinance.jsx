@@ -16,7 +16,7 @@ import {
 import { ordersAPI, walletAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const AdminFinance = () => {
+const AdminFinance = ({ embedded }) => {
   const [orders, setOrders] = useState([]);
   const [walletTransactions, setWalletTransactions] = useState([]);
   const [pendingTopups, setPendingTopups] = useState([]);
@@ -169,16 +169,18 @@ const AdminFinance = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white">Financial Overview</h2>
-          <p className="text-textGray mt-2">Track revenue, wallet activity, and financial performance</p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white">Financial Overview</h2>
+            <p className="text-textGray mt-2">Track revenue, wallet activity, and financial performance</p>
+          </div>
+          <button onClick={fetchData} className="btn-secondary flex items-center space-x-2">
+            <RefreshCw size={16} />
+            <span>Refresh</span>
+          </button>
         </div>
-        <button onClick={fetchData} className="btn-secondary flex items-center space-x-2">
-          <RefreshCw size={16} />
-          <span>Refresh</span>
-        </button>
-      </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

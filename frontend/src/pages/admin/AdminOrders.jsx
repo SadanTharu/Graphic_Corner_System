@@ -17,7 +17,7 @@ import {
 import toast from 'react-hot-toast';
 import StatusStepper from '../../components/StatusStepper';
 
-const AdminOrders = () => {
+const AdminOrders = ({ embedded }) => {
   const [orders, setOrders] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -208,16 +208,18 @@ const AdminOrders = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white">Orders Management</h2>
-          <p className="text-textGray mt-2">Review, approve, and manage customer orders</p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white">Orders Management</h2>
+            <p className="text-textGray mt-2">Review, approve, and manage customer orders</p>
+          </div>
+          <button onClick={fetchData} className="btn-secondary flex items-center space-x-2">
+            <RefreshCw size={16} />
+            <span>Refresh</span>
+          </button>
         </div>
-        <button onClick={fetchData} className="btn-secondary flex items-center space-x-2">
-          <RefreshCw size={16} />
-          <span>Refresh</span>
-        </button>
-      </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">

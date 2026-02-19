@@ -5,7 +5,6 @@ import {
   FileText, 
   Package, 
   Wallet, 
-  BarChart3, 
   Settings, 
   Users, 
   ListChecks,
@@ -14,7 +13,8 @@ import {
   Menu,
   X,
   Image,
-  UserCircle
+  UserCircle,
+  UsersRound
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -33,12 +33,11 @@ const Sidebar = () => {
 
   const adminLinks = [
     { name: 'Overview', path: '/admin/overview', icon: LayoutDashboard },
-    { name: 'Orders', path: '/admin/orders', icon: ShoppingBag },
-    { name: 'Services', path: '/admin/services', icon: Settings },
-    { name: 'Packages', path: '/admin/packages', icon: Package },
-    { name: 'Payments', path: '/admin/payments', icon: CreditCard },
-    { name: 'Finance', path: '/admin/finance', icon: BarChart3 },
+    { name: 'Orders & Subscriptions', path: '/admin/orders', icon: ShoppingBag },
+    { name: 'Services & Packages', path: '/admin/catalog', icon: Settings },
+    { name: 'Payments & Finance', path: '/admin/payments', icon: CreditCard },
     { name: 'Team', path: '/admin/team', icon: Users },
+    { name: 'Customers', path: '/admin/customers', icon: UsersRound },
     { name: 'Banners', path: '/admin/banners', icon: Image },
     { name: 'Profile', path: '/admin/profile', icon: UserCircle }
   ];

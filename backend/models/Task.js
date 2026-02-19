@@ -28,6 +28,39 @@ const taskSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Order'
   },
+  // Subscription-related fields
+  subscription: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subscription'
+  },
+  service: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Service'
+  },
+  customer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  // Customer provides raw files (links) and instructions per task
+  rawFiles: [{
+    url: { type: String, required: true },
+    name: { type: String, default: 'File' },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+  instructions: {
+    type: String,
+    default: ''
+  },
+  // Deliverable links from team
+  deliverables: [{
+    url: { type: String, required: true },
+    name: { type: String, default: 'Deliverable' },
+    uploadedAt: { type: Date, default: Date.now }
+  }],
+  serviceCount: {
+    type: Number,
+    default: 1
+  },
   dueDate: {
     type: Date
   },
@@ -37,5 +70,8 @@ const taskSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+taskSchema.index({ subscription: 1 });
+taskSchema.index({ customer: 1 });
 
 module.exports = mongoose.model('Task', taskSchema);

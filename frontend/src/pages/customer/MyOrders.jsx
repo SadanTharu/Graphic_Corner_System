@@ -12,7 +12,7 @@ const ensureUrl = (url) => {
   return /^https?:\/\//i.test(url) ? url : 'https://' + url;
 };
 
-const MyOrders = () => {
+const MyOrders = ({ embedded }) => {
   const { user } = useAuth();
   const { wallet, setWalletBalance } = useCart();
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -162,12 +162,15 @@ const MyOrders = () => {
   };
 
   return (
-    <div className="space-y-6">{/* Header */}
+    <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white">My Orders</h2>
-          <p className="text-textGray mt-2">Track and manage your orders</p>
-        </div>
+        {!embedded && (
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white">My Orders</h2>
+            <p className="text-textGray mt-2">Track and manage your orders</p>
+          </div>
+        )}
 
         {/* Filter */}
         <div className="flex space-x-2 mt-4 md:mt-0">

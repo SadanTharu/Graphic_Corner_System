@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const AdminPayments = () => {
+const AdminPayments = ({ embedded }) => {
   const [activeTab, setActiveTab] = useState('order_payments');
   const [orders, setOrders] = useState([]);
   const [pendingTopups, setPendingTopups] = useState([]);
@@ -150,20 +150,22 @@ const AdminPayments = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-white">Payment Verification</h2>
-          <p className="text-textGray mt-2">Review and verify customer payments and wallet top-ups</p>
+      {!embedded && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white">Payment Verification</h2>
+            <p className="text-textGray mt-2">Review and verify customer payments and wallet top-ups</p>
+          </div>
+          <button
+            onClick={() => fetchData(false)}
+            disabled={refreshing}
+            className="btn-secondary flex items-center space-x-2"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            <span>Refresh</span>
+          </button>
         </div>
-        <button
-          onClick={() => fetchData(false)}
-          disabled={refreshing}
-          className="btn-secondary flex items-center space-x-2"
-        >
-          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
-          <span>Refresh</span>
-        </button>
-      </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

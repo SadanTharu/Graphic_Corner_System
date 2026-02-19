@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { tasksAPI, ordersAPI } from '../../utils/api';
-import { CheckCircle, Loader2, RefreshCw, Download, Link as LinkIcon, Eye, Edit3 } from 'lucide-react';
+import { tasksAPI, ordersAPI, subscriptionsAPI } from '../../utils/api';
+import { 
+  CheckCircle, Loader2, RefreshCw, Download, Link as LinkIcon, Eye, Edit3,
+  FileText, ExternalLink, Send, X, Package, Calendar, Upload
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ensureUrl = (url) => {
@@ -18,6 +21,9 @@ const TeamTasks = () => {
   const [uploading, setUploading] = useState({});
   const [linkModal, setLinkModal] = useState({ isOpen: false, orderId: null, type: null, isUpdate: false });
   const [linkValue, setLinkValue] = useState('');
+  // Subscription task deliverable modal
+  const [subDeliverableModal, setSubDeliverableModal] = useState({ isOpen: false, subId: null, taskId: null, taskTitle: '' });
+  const [subDeliverableUrl, setSubDeliverableUrl] = useState('');
 
   useEffect(() => {
     fetchData();
@@ -53,6 +59,27 @@ const TeamTasks = () => {
     } catch (error) {
       console.error('Error completing task:', error);
       toast.error('Failed to complete task');
+    }
+  };
+
+  const handleSubmitSubDeliverable = async () => {
+    if (!subDeliverableUrl.trim()) {
+      toast.error('Please enter a deliverable link');
+      return;
+    }
+    try {
+      await subscriptionsAPI.uploadDeliverables(
+        subDeliverableModal.subId,
+        subDeliverableModal.taskId,
+        { deliverables: [{ url: subDeliverableUrl.trim(), name: 'Deliverable' }] }
+      );
+      toast.success('Deliverable uploaded! Customer will be notified.');
+      setSubDeliverableModal({ isOpen: false, subId: null, taskId: null, taskTitle: '' });
+      setSubDeliverableUrl('');
+      fetchData();
+    } catch (error) {
+      console.error('Error uploading deliverable:', error);
+      toast.error(error.message || 'Failed to upload deliverable');
     }
   };
 
@@ -176,16 +203,39 @@ const TeamTasks = () => {
         ) : (
           <>
             {/* Task Cards */}
-            {filteredTasks.map(task => (
+            {filteredTasks.map(task => {
+              const isSubTask = !!task.subscription;
+              return (
               <div key={task._id} className="card">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-4">
                   <div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded font-medium">Task</span>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                        isSubTask ? 'bg-purple-500/20 text-purple-400' : 'bg-primary/20 text-primary'
+                      }`}>
+                        {isSubTask ? 'Subscription' : 'Task'}
+                      </span>
                       <h3 className="text-xl font-bold text-white">{task.title}</h3>
                     </div>
                     {task.description && (
                       <p className="text-textGray text-sm mt-1">{task.description}</p>
+                    )}
+                    {/* Subscription & Service info */}
+                    {isSubTask && (
+                      <div className="mt-1 space-y-0.5 text-sm">
+                        <p className="text-textGray">
+                          <Package size={12} className="inline mr-1 text-purple-400" />
+                          Package: <span className="text-white">{task.subscription?.packageName || 'N/A'}</span>
+                          {task.service && (
+                            <> • Service: <span className="text-blue-400">{task.service.name}</span></>
+                          )}
+                        </p>
+                        {task.customer && (
+                          <p className="text-textGray">
+                            Customer: <span className="text-white">{task.customer.name}</span>
+                          </p>
+                        )}
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center space-x-3 mt-3 lg:mt-0">
@@ -202,6 +252,67 @@ const TeamTasks = () => {
                   </div>
                 </div>
 
+                {/* Customer Instructions (subscription tasks) */}
+                {isSubTask && task.instructions && (
+                  <div className="bg-darker p-3 rounded-lg mb-3">
+                    <p className="text-textGray text-xs font-semibold mb-1 flex items-center space-x-1">
+                      <FileText size={12} className="text-yellow-400" />
+                      <span>Customer Instructions:</span>
+                    </p>
+                    <p className="text-white text-sm">{task.instructions}</p>
+                  </div>
+                )}
+
+                {/* Raw Files from Customer (subscription tasks) */}
+                {isSubTask && task.rawFiles?.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-blue-400 text-xs font-semibold mb-2 flex items-center space-x-1">
+                      <ExternalLink size={12} />
+                      <span>Customer Raw Files ({task.rawFiles.length}):</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {task.rawFiles.map((file, idx) => (
+                        <a
+                          key={idx}
+                          href={ensureUrl(file.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center space-x-2 px-3 py-2 bg-blue-500/10 text-blue-400 text-sm rounded-lg hover:bg-blue-500/20 transition-colors"
+                        >
+                          <ExternalLink size={14} />
+                          <span className="truncate max-w-[200px]">{file.name || file.url}</span>
+                          <Eye size={14} />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Uploaded Deliverables (subscription tasks) */}
+                {isSubTask && task.deliverables?.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-green-400 text-xs font-semibold mb-2 flex items-center space-x-1">
+                      <CheckCircle size={12} />
+                      <span>Deliverables Uploaded ({task.deliverables.length}):</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {task.deliverables.map((d, idx) => (
+                        <a
+                          key={idx}
+                          href={ensureUrl(d.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center space-x-2 px-3 py-2 bg-green-500/10 text-green-400 text-sm rounded-lg hover:bg-green-500/20 transition-colors border border-green-500/20"
+                        >
+                          <ExternalLink size={14} />
+                          <span className="truncate max-w-[200px]">{d.name || `Deliverable ${idx + 1}`}</span>
+                          <Eye size={14} />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4 text-sm text-textGray">
                     <span>Due: {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'Not set'}</span>
@@ -209,18 +320,39 @@ const TeamTasks = () => {
                       <span>Order: #{task.order?.orderNumber || 'N/A'}</span>
                     )}
                   </div>
-                  {task.status !== 'done' && (
-                    <button
-                      onClick={() => handleCompleteTask(task._id)}
-                      className="btn-primary flex items-center space-x-2"
-                    >
-                      <CheckCircle size={18} />
-                      <span>Mark as Complete</span>
-                    </button>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    {/* Upload Deliverable button for subscription tasks */}
+                    {isSubTask && task.subscription?._id && (
+                      <button
+                        onClick={() => {
+                          setSubDeliverableModal({
+                            isOpen: true,
+                            subId: task.subscription._id,
+                            taskId: task._id,
+                            taskTitle: task.title
+                          });
+                          setSubDeliverableUrl(task.deliverables?.length > 0 ? task.deliverables[task.deliverables.length - 1].url : '');
+                        }}
+                        className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 px-4 py-2 rounded-lg font-medium transition-all flex items-center space-x-2"
+                      >
+                        {task.deliverables?.length > 0 ? <Edit3 size={16} /> : <Upload size={16} />}
+                        <span>{task.deliverables?.length > 0 ? 'Update Deliverable' : 'Upload Deliverable'}</span>
+                      </button>
+                    )}
+                    {task.status !== 'done' && (
+                      <button
+                        onClick={() => handleCompleteTask(task._id)}
+                        className="btn-primary flex items-center space-x-2"
+                      >
+                        <CheckCircle size={18} />
+                        <span>Mark as Complete</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
 
             {/* Order Cards */}
             {filteredOrders.map(order => (
@@ -428,6 +560,59 @@ const TeamTasks = () => {
                   <LinkIcon size={18} />
                 )}
                 <span>{linkModal.isUpdate ? 'Update' : 'Submit'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Subscription Deliverable Upload Modal */}
+      {subDeliverableModal.isOpen && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-lightGray rounded-xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-xl font-bold text-white">Upload Deliverable</h3>
+                <p className="text-textGray text-sm mt-1">{subDeliverableModal.taskTitle}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setSubDeliverableModal({ isOpen: false, subId: null, taskId: null, taskTitle: '' });
+                  setSubDeliverableUrl('');
+                }}
+                className="p-2 hover:bg-darker rounded-lg transition-colors"
+              >
+                <X size={20} className="text-textGray" />
+              </button>
+            </div>
+            <p className="text-textGray text-sm mb-4">
+              Paste the final output link (Google Drive, YouTube, Dropbox, etc.)
+            </p>
+            <input
+              type="url"
+              value={subDeliverableUrl}
+              onChange={(e) => setSubDeliverableUrl(e.target.value)}
+              placeholder="https://drive.google.com/..."
+              className="input-field mb-4"
+              autoFocus
+            />
+            <div className="flex space-x-3">
+              <button
+                onClick={() => {
+                  setSubDeliverableModal({ isOpen: false, subId: null, taskId: null, taskTitle: '' });
+                  setSubDeliverableUrl('');
+                }}
+                className="flex-1 btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitSubDeliverable}
+                disabled={!subDeliverableUrl.trim()}
+                className="flex-1 btn-primary flex items-center justify-center space-x-2"
+              >
+                <Send size={18} />
+                <span>Submit</span>
               </button>
             </div>
           </div>

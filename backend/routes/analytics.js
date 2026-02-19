@@ -5,6 +5,8 @@ const Order = require('../models/Order');
 const User = require('../models/User');
 const Service = require('../models/Service');
 const Transaction = require('../models/Transaction');
+const Subscription = require('../models/Subscription');
+const Task = require('../models/Task');
 
 // GET /api/analytics - Full dashboard analytics (admin only)
 router.get('/', auth, isAdmin, async (req, res) => {
@@ -15,11 +17,13 @@ router.get('/', auth, isAdmin, async (req, res) => {
     const startOfYear = new Date(now.getFullYear(), 0, 1);
 
     // ---- Fetch all data in parallel ----
-    const [orders, users, services, transactions] = await Promise.all([
+    const [orders, users, services, transactions, subs, tasks] = await Promise.all([
       Order.find({}).populate('service', 'name category').populate('assignedTo', 'name specialty').populate('customer', 'name email').lean(),
       User.find({}).select('name email role specialty walletBalance isActive createdAt').lean(),
       Service.find({}).lean(),
-      Transaction.find({}).lean()
+      Transaction.find({}).lean(),
+      Subscription.find({}).lean(),
+      Task.find({}).populate('assignedTo', 'name specialty').lean()
     ]);
 
     // ---- Summary Stats ----
@@ -110,21 +114,36 @@ router.get('/', auth, isAdmin, async (req, res) => {
       .sort((a, b) => b.orders - a.orders)
       .slice(0, 6);
 
-    // ---- Team Performance ----
+    // ---- Subscription Stats ----
+    const totalSubs = subs.length;
+    const activeSubs = subs.filter(s => s.status === 'active').length;
+    const pendingSubs = subs.filter(s => s.status === 'pending' || s.status === 'awaiting_payment').length;
+    const completedSubs = subs.filter(s => s.status === 'completed').length;
+    const subRevenue = subs.filter(s => s.status === 'active' || s.status === 'completed').reduce((sum, s) => sum + (s.offeringPrice || 0), 0);
+
+    // ---- Team Performance (orders + subscription tasks) ----
     const teamUsers = users.filter(u => u.role === 'team');
     const teamPerformance = teamUsers.map(member => {
+      const mid = member._id.toString();
       const memberOrders = orders.filter(o =>
-        o.assignedTo && (o.assignedTo._id?.toString() === member._id.toString() || o.assignedTo.toString() === member._id.toString())
+        o.assignedTo && (o.assignedTo._id?.toString() === mid || o.assignedTo.toString() === mid)
       );
-      const completed = memberOrders.filter(o => o.status === 'completed').length;
-      const active = memberOrders.filter(o => !['completed', 'cancelled'].includes(o.status)).length;
+      const memberTasks = tasks.filter(t =>
+        t.assignedTo && (t.assignedTo._id?.toString() === mid || t.assignedTo.toString() === mid)
+      );
+      const completedOrds = memberOrders.filter(o => o.status === 'completed').length;
+      const completedTsks = memberTasks.filter(t => t.status === 'done').length;
+      const activeOrds = memberOrders.filter(o => !['completed', 'cancelled'].includes(o.status)).length;
+      const activeTsks = memberTasks.filter(t => t.status !== 'done').length;
       const revenue = memberOrders.filter(o => o.status === 'completed').reduce((sum, o) => sum + (o.totalAmount || 0), 0);
       return {
         name: member.name,
         specialty: member.specialty || 'General',
-        completed,
-        active,
-        total: memberOrders.length,
+        completed: completedOrds + completedTsks,
+        active: activeOrds + activeTsks,
+        total: memberOrders.length + memberTasks.length,
+        orders: memberOrders.length,
+        tasks: memberTasks.length,
         revenue
       };
     }).sort((a, b) => b.completed - a.completed);
@@ -215,6 +234,11 @@ router.get('/', auth, isAdmin, async (req, res) => {
         thisMonthRevenue,
         thisMonthNewCustomers,
         lastMonthRevenue,
+        totalSubs,
+        activeSubs,
+        pendingSubs,
+        completedSubs,
+        subRevenue,
         revenueGrowth: lastMonthRevenue > 0
           ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
           : thisMonthRevenue > 0 ? 100 : 0,
