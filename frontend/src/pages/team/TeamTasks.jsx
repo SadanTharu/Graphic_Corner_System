@@ -51,9 +51,15 @@ const TeamTasks = () => {
     }
   };
 
-  const handleCompleteTask = async (taskId) => {
+  const handleCompleteTask = async (taskId, task) => {
     try {
-      await tasksAPI.update(taskId, { status: 'done' });
+      // For subscription tasks, use the subscription endpoint which checks
+      // if all tasks are done and transitions to awaiting_final_payment
+      if (task?.subscription?._id) {
+        await subscriptionsAPI.completeTask(task.subscription._id, taskId);
+      } else {
+        await tasksAPI.update(taskId, { status: 'done' });
+      }
       toast.success('Task marked as complete!');
       fetchData();
     } catch (error) {
@@ -341,7 +347,7 @@ const TeamTasks = () => {
                     )}
                     {task.status !== 'done' && (
                       <button
-                        onClick={() => handleCompleteTask(task._id)}
+                        onClick={() => handleCompleteTask(task._id, task)}
                         className="btn-primary flex items-center space-x-2"
                       >
                         <CheckCircle size={18} />

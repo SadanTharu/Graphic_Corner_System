@@ -116,13 +116,13 @@ const AdminOverview = () => {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           title="Total Revenue"
-          value={`LKR ${summary.totalRevenue.toLocaleString()}`}
+          value={`LKR ${((summary.totalRevenue || 0) + (summary.subRevenue || 0)).toLocaleString()}`}
           icon={DollarSign}
           color="text-green-400"
           bgColor="bg-green-500/10"
           trend={summary.revenueGrowth}
           trendUp={summary.revenueGrowth >= 0}
-          subtitle={`This month: LKR ${summary.thisMonthRevenue.toLocaleString()}`}
+          subtitle={`Orders: LKR ${(summary.totalRevenue || 0).toLocaleString()} • Subs: LKR ${(summary.subRevenue || 0).toLocaleString()}`}
         />
         <StatCard
           title="Total Orders"

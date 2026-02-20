@@ -263,6 +263,7 @@ const AdminSubscriptions = ({ embedded }) => {
     active: subscriptions.filter(s => s.status === 'active').length,
     awaiting_final_payment: subscriptions.filter(s => s.status === 'awaiting_final_payment').length,
     completed: subscriptions.filter(s => s.status === 'completed').length,
+    cancelled: subscriptions.filter(s => s.status === 'cancelled').length,
   };
 
   if (loading) {
@@ -290,7 +291,7 @@ const AdminSubscriptions = ({ embedded }) => {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         {[
           { key: 'all', label: 'All', count: statusCounts.all },
           { key: 'pending', label: 'Pending', count: statusCounts.pending },
@@ -298,6 +299,7 @@ const AdminSubscriptions = ({ embedded }) => {
           { key: 'active', label: 'Active', count: statusCounts.active },
           { key: 'awaiting_final_payment', label: 'Final Pay', count: statusCounts.awaiting_final_payment },
           { key: 'completed', label: 'Completed', count: statusCounts.completed },
+          { key: 'cancelled', label: 'Cancelled', count: statusCounts.cancelled },
         ].map(stat => (
           <button
             key={stat.key}

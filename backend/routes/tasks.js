@@ -3,7 +3,18 @@ const router = express.Router();
 const { auth, isAdmin, isTeam } = require('../middleware/auth');
 const Task = require('../models/Task');
 const User = require('../models/User');
+const Subscription = require('../models/Subscription');
+const Notification = require('../models/Notification');
 const { sendTaskAssignedEmail } = require('../config/mailjet');
+
+// Helper to create notification
+const createNotification = async (userId, type, title, message) => {
+  try {
+    await new Notification({ user: userId, type, title, message }).save();
+  } catch (err) {
+    console.error('Notification error:', err);
+  }
+};
 
 // Get all tasks
 router.get('/', auth, async (req, res) => {
@@ -103,6 +114,49 @@ router.put('/:id', auth, async (req, res) => {
 
     await task.save();
     await task.populate('assignedTo order');
+
+    // If this is a subscription task being marked as done, check subscription completion
+    if (status === 'done' && task.subscription) {
+      try {
+        const subscription = await Subscription.findById(task.subscription).populate('tasks');
+        if (subscription && subscription.status === 'active') {
+          const allDone = subscription.tasks.every(t => t.status === 'done');
+          if (allDone) {
+            const remainingAmount = Math.round(subscription.offeringPrice - subscription.advanceAmount);
+            subscription.status = 'awaiting_final_payment';
+            subscription.finalPayment = {
+              method: '',
+              amount: remainingAmount,
+              slip: '',
+              status: 'none',
+              paidAt: null,
+              verifiedAt: null,
+              verifiedBy: null
+            };
+            await subscription.save();
+
+            await createNotification(
+              subscription.customer,
+              'subscription_completed',
+              'All Tasks Complete! 💰 Final Payment Required',
+              `All tasks in your "${subscription.packageName}" subscription are complete! Please pay the remaining balance of LKR ${remainingAmount.toLocaleString()} to finalize.`
+            );
+
+            const admins = await User.find({ role: 'admin', isActive: true });
+            for (const admin of admins) {
+              await createNotification(
+                admin._id,
+                'subscription_completed',
+                'Subscription Tasks Complete ✅',
+                `All tasks in "${subscription.packageName}" are done. Awaiting customer's final payment of LKR ${remainingAmount.toLocaleString()}.`
+              );
+            }
+          }
+        }
+      } catch (subErr) {
+        console.error('Error checking subscription completion:', subErr);
+      }
+    }
 
     // Send email if task was reassigned to a new team member
     const newAssignedTo = task.assignedTo ? task.assignedTo._id?.toString() : null;
