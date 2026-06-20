@@ -1,13 +1,5 @@
-// API utility for making HTTP requests
-// Base URL should be just the domain, without /api (endpoints already include /api)
-// Examples:
-//   VITE_API_URL=https://graphiccornersystem-bwh6hrghayebbwb9.southeastasia-01.azurewebsites.net
-//   NOT: https://graphiccornersystem-bwh6hrghayebbwb9.southeastasia-01.azurewebsites.net/api
-const rawApiUrl = import.meta.env.VITE_API_URL || 'https://graphiccornersystem-bwh6hrghayebbwb9.southeastasia-01.azurewebsites.net';
-// Remove trailing slashes and any /api suffix to avoid double /api
-const API_URL = rawApiUrl
-  .replace(/\/api\/?$/, '')  // Remove /api or /api/ at the end
-  .replace(/\/+$/, '');      // Remove any trailing slashes
+
+const API_URL = import.meta.env.VITE_API_URL || 'https://graphiccornersystem-bwh6hrghayebbwb9.southeastasia-01.azurewebsites.net';
 
 const getAuthToken = () => {
   return localStorage.getItem('token');
