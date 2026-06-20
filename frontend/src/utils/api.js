@@ -1,6 +1,9 @@
 // API utility for making HTTP requests
 // Use empty string to leverage Vite's proxy configuration
-const API_URL = import.meta.env.VITE_API_URL || 'graphiccornersystem-bwh6hrghayebbwb9.southeastasia-01.azurewebsites.net';
+// Ensure the API URL includes a protocol and no trailing slash to avoid
+// requests like https://host/api/api/...
+const rawApiUrl = import.meta.env.VITE_API_URL || 'https://graphiccornersystem-bwh6hrghayebbwb9.southeastasia-01.azurewebsites.net';
+const API_URL = rawApiUrl.replace(/\/+$/, '');
 
 const getAuthToken = () => {
   return localStorage.getItem('token');
@@ -34,7 +37,8 @@ const apiRequest = async (endpoint, options = {}) => {
     headers,
   };
 
-  const response = await fetch(`${API_URL}${endpoint}`, config);
+  const path = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const response = await fetch(`${API_URL}${path}`, config);
   return handleResponse(response);
 };
 
