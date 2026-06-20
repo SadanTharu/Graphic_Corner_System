@@ -25,8 +25,6 @@ jobs:
 
       - name: npm install, build, and test
         run: |
-          cd backend
-          npm cache clean --force
           npm install
           npm run build --if-present
           npm run test --if-present
@@ -54,4 +52,4 @@ jobs:
           app-name: 'GraphicCornerSystem'
           slot-name: 'Production'
           package: .
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_64C12993418448BFB547D5F29FAA5563 }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_DCAFBE2A72F34AC7B02909F2B22D197F }}
