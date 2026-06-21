@@ -23,21 +23,11 @@ jobs:
         with:
           node-version: '24.x'
 
-      - name: npm install and build
+      - name: npm install, build, and test
         run: |
-          # Build backend
-          cd backend
-          npm cache clean --force
           npm install
-          cd ..
-          
-          # Build frontend
-          cd frontend
-          npm cache clean --force
-          npm install
-          chmod +x node_modules/.bin/*
-          npm run build
-          cd ..
+          npm run build --if-present
+          npm run test --if-present
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
