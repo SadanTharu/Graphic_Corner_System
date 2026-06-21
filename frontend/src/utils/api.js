@@ -1,6 +1,6 @@
 // API utility for making HTTP requests
 // Use empty string to leverage Vite's proxy configuration
-const API_URL = import.meta.env.VITE_API_URL || '';
+const API_URL = import.meta.env.VITE_API_URL || 'https://graphic-corner-system-f6847a47921f.herokuapp.com/';
 
 const getAuthToken = () => {
   return localStorage.getItem('token');
