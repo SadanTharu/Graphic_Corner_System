@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const API_URL = import.meta.env.VITE_API_URL || 'graphiccornersystem-bwh6hrghayebbwb9.southeastasia-01.azurewebsites.net';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 const ensureUrl = (url) => {
   if (!url) return '#';
